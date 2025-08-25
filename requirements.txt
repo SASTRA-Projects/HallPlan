@@ -1,0 +1,2 @@
+-r SASTRA-Timetable/requirements.txt
+pandas==2.2.3
