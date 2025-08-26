@@ -1,0 +1,14 @@
+*.pem
+*.pdf
+a.py
+.*
+!.gitignore
+!.gitmodules
+!.github/
+!.dockerignore
+__pycache__/
+*.py[cod]
+sastra/
+hallplan/
+venv/
+.vscode/
