@@ -1,2 +1,2 @@
-# SASTRA-HallPlan
+# HallPlan
 Automate generation of examination Hall Plan
