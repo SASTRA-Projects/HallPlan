@@ -13,3 +13,5 @@ sastra/
 hallplan/
 venv/
 .vscode/
+.xlsx
+.xls
