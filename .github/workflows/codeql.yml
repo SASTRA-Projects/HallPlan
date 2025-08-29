@@ -1,9 +1,9 @@
-name: CodeQL Advanced
+name: CodeQL  Scan
 
 on:
   push:
     branches: [ "main" ]
-    paths-ignore:
+    paths-ignore: &paths_ignore
       - '**/*.py'
       - '**/*.html'
       - '**/*.css'
@@ -12,20 +12,24 @@ on:
       - '**/*.yaml'
   pull_request:
     branches: [ "main" ]
-    paths-ignore:
-      - '**/*.py'
-      - '**/*.html'
-      - '**/*.css'
-      - '**/*.js'
-      - '**/*.yml'
-      - '**/*.yaml'
+    paths-ignore: *paths_ignore
   schedule:
     - cron: '0 0 * * 0'
 
+concurrency:
+  group: codeql-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+  security-events: write
+
 jobs:
   analyze:
-    name: Analyze Python
-    runs-on: 'ubuntu-latest'
+    name: Analyze — ${{ matrix.language }}
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       packages: read
@@ -36,33 +40,41 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - language: actions
-          build-mode: none
-        - language: python
-          build-mode: none
-        - language: javascript-typescript
-          build-mode: none
+          - language: actions
+            build-mode: none
+          - language: python
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
+      - name: Set up Python (optional helper for some CodeQL builds)
+        if: matrix.language == 'python' || matrix.language == 'javascript-typescript'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - if: matrix.build-mode == 'manual'
-      shell: bash
-      run: |
-        echo 'If you are using a "manual" build mode for one or more of the' \
-          'languages you are analyzing, replace this with the commands to build' \
-          'your code, for example:'
-        echo '  make bootstrap'
-        echo '  make release'
-        exit 1
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
+      - if: matrix.build-mode == 'manual'
+        name: Manual build-mode notice
+        shell: bash
+        run: |
+          echo 'You are using "manual" build-mode for one or more languages.'
+          echo 'Replace this step with your build commands (for example: make bootstrap; make release).'
+          exit 1
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: ${{ matrix.language }}
