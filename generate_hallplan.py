@@ -2,6 +2,7 @@ from Timetable.typehints import (Connection, Cursor, FileStorage,
                                  Optional, Tuple, Dict)
 from Timetable import fetch_data, show_data
 from datetime import datetime
+from random import randint
 import pandas as pd
 
 
@@ -75,8 +76,8 @@ def process_schedule(cursor: Cursor, /,
     schedules = pd.read_excel(schedule_sheet, sheet_name="schedules",
                               keep_default_na=False, parse_dates=["Date"],
                               date_format="%d/%m/%Y",
-                              names=headers).astype({"Year": "int8",
-                                                     "SlotNo": "int8"})
+                              names=headers).astype({"Year": "uint8",
+                                                     "SlotNo": "uint8"})
     schedules = schedules.merge(slots, how="inner", left_on="SlotNo", right_on="No")
     schedules["Sections"] = schedules.apply(get_sections, axis=1)
     schedules = schedules.explode("Sections")
@@ -91,17 +92,25 @@ def process_schedule(cursor: Cursor, /,
     return schedules
 
 
-def process_halls(cursor: Cursor, /,
+def process_hall(cursor: Cursor, /,
                   hall_sheet: FileStorage,
                   schedules: pd.DataFrame, *,
-                  campus_id: Optional[int] = None) -> pd.DataFrame:
-    headers = ["ID", "RoomNo", "Capacity", "Columns"]
-    to_types = {"ID": "uint8", "RoomNo": "unint16",
+                  building_id: Optional[int] = None) -> pd.DataFrame:
+    def get_class(room_no):
+        cls = fetch_data.get_class(cursor, building_id=building_id,
+                                   room_no=room_no)
+        return cls["id"]
+    headers = ["RoomNo", "Capacity", "Columns"]
+    to_types = {"ID": "uint16", "RoomNo": "uint16",
                 "Capacity": "uint8", "Columns": "uint8",
                 "Seat": "uint8"}
     halls = pd.read_excel(hall_sheet, sheet_name="halls",
                           names=headers,
                           engine="openpyxl")
+    halls["ID"] = halls.apply(
+        lambda hall: get_class(hall.RoomNo),
+        axis=1
+    )
     halls["Seat"] = 0
     halls.astype(to_types)
     return halls
@@ -111,5 +120,17 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                       campus_id: Optional[int] = None,
                       schedules: pd.DataFrame = pd.DataFrame(),
                       halls: pd.DataFrame = pd.DataFrame()) -> None:
-    #TODO: ...
-    pass
+    plan = pd.DataFrame()
+    for ds, grouped in schedules.groupby(["Date", "SlotNo"], axis=1):
+        prg_years = []
+        _halls = halls
+        # _halls = halls.query("Date == @ds[0] and SlotNo == @ds[1]")
+        hall_idx = len(_halls)-1
+        for _, row in grouped.sort_values(by=["CourseCode"]).iterrows():
+            prg_year = [row["Degree"], row["Stream"], row["Year"]]
+            if prg_year not in prg_years:
+                prg_years.append(prg_year)
+        for prg_year in prg_years:
+            prg_yr_schedule = grouped[prg_year]
+            print(prg_yr_schedule)
+
