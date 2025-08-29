@@ -169,7 +169,7 @@ Additional attribution details can be found in the [NOTICE](NOTICE) file.
 
 ## **🤝 Contributing**
 
-Contributions are welcome! We'd love your help to improve this system. Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for detailed guidelines.
+Contributions are welcome! We'd love your help to improve this system.
 
 Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) to maintain a collaborative and respectful environment.
 
