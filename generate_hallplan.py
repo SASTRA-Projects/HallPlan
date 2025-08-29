@@ -62,15 +62,16 @@ def process_schedule(cursor: Cursor, /,
             axis=1
         )
 
-    def get_students(row):
-        degree, stream = row.Degree, row.Stream
+    def get_students(section):
+        degree, stream = section.Degree, section.Stream
         if not deg_stream.get((degree, stream)):
             programme_id = show_data.get_programme_id(cursor, degree=degree,
                                                       stream=stream)
             deg_stream[(degree, stream)] = programme_id
         return [student["reg_no"] for student in fetch_data.get_students(
             cursor, campus_id=campus_id,
-            programme_id=deg_stream[(degree, stream)])]
+            programme_id=deg_stream[(degree, stream)],
+            section_id=section.SectionID)]
 
     headers = ["Year", "Degree", "Stream", "CourseCode", "Date", "SlotNo"]
     schedules = pd.read_excel(schedule_sheet, sheet_name="schedules",
@@ -86,7 +87,7 @@ def process_schedule(cursor: Cursor, /,
                           pd.json_normalize(schedules["Sections"])],
                           axis=1)
     intersect(schedules, fetch_data.get_periods(cursor))
-    schedules.rename(columns={"id": "SectionId", "section": "Section"},
+    schedules.rename(columns={"id": "SectionID", "section": "Section"},
                      inplace=True)
     schedules["Students"] = schedules.apply(get_students, axis=1)
     return schedules
@@ -100,11 +101,13 @@ def process_hall(cursor: Cursor, /,
         cls = fetch_data.get_class(cursor, building_id=building_id,
                                    room_no=room_no)
         return cls["id"]
-    headers = ["RoomNo", "Capacity", "Columns"]
+    headers = ["RoomNo", "Capacity", "Columns", "Date", "SlotNo"]
     to_types = {"ID": "uint16", "RoomNo": "uint16",
                 "Capacity": "uint8", "Columns": "uint8",
                 "Seat": "uint8"}
     halls = pd.read_excel(hall_sheet, sheet_name="halls",
+                          parse_dates=["Date"],
+                          date_format="%d/%m/%Y",
                           names=headers,
                           engine="openpyxl")
     halls["ID"] = halls.apply(
@@ -120,17 +123,39 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                       campus_id: Optional[int] = None,
                       schedules: pd.DataFrame = pd.DataFrame(),
                       halls: pd.DataFrame = pd.DataFrame()) -> None:
-    plan = pd.DataFrame()
-    for ds, grouped in schedules.groupby(["Date", "SlotNo"], axis=1):
+    plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream",
+                                 "Year", "Section", "CourseCode", "RegNo"])
+    for ds, grouped in schedules.groupby(["Date", "SlotNo"]):
         prg_years = []
-        _halls = halls
-        # _halls = halls.query("Date == @ds[0] and SlotNo == @ds[1]")
-        hall_idx = len(_halls)-1
+        _halls = halls.query("Date == @ds[0] and SlotNo == @ds[1]")
+        n = len(_halls)
+        hall_idx = randint(0, n-1)
         for _, row in grouped.sort_values(by=["CourseCode"]).iterrows():
             prg_year = [row["Degree"], row["Stream"], row["Year"]]
             if prg_year not in prg_years:
                 prg_years.append(prg_year)
         for prg_year in prg_years:
-            prg_yr_schedule = grouped[prg_year]
-            print(prg_yr_schedule)
-
+            d, s, y = prg_year
+            prg_yr_schedule = grouped.query("Degree == @d and Stream == @s and Year == @y")
+            for _, section in prg_yr_schedule.iterrows():
+                students = section.Students
+                course_code = section.CourseCode
+                no_of_students = len(students)
+                while no_of_students:
+                    hall = _halls.iloc[hall_idx]
+                    cap = hall.Capacity
+                    half = cap // 2
+                    occupy = min(no_of_students, abs(half - hall.Seat))
+                    for i in range(occupy):
+                        plan = pd.concat([plan, pd.DataFrame([[
+                                *ds, *prg_year,
+                                section.Section, course_code, students[i]
+                            ]], columns=plan.columns)],
+                            axis=0, ignore_index=True)
+                    students = students[occupy:]
+                    no_of_students = len(students)
+                    hall.Seat += occupy
+                    if hall.Seat in (half, cap):
+                        hall_idx = (hall_idx + 1) % n
+    plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
+    return plan
