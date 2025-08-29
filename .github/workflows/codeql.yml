@@ -1,4 +1,4 @@
-name: CodeQL Scan
+name: CodeQL Security Scan
 
 on:
   push:
@@ -26,8 +26,33 @@ permissions:
   security-events: write
 
 jobs:
+  validate-dependencies:
+    name: Validate Python Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Run Dependency Validation
+        run: |
+          pip install pip-tools
+          if pip-compile --dry-run -o requirements.out requirements.txt; then
+            echo "Python dependencies are valid."
+          else
+            echo "::error::Python dependency validation failed. Check requirements.txt and submodule paths."
+            exit 1
+          fi
+
   analyze:
     name: Analyze (${{ matrix.language }})
+    needs: validate-dependencies
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -36,7 +61,6 @@ jobs:
           - language: python
           - language: javascript-typescript
           - language: actions
-
     steps:
       - name: Checkout Repository (with submodules)
         uses: actions/checkout@v4
