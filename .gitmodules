@@ -1,3 +1,4 @@
 [submodule "Timetable"]
 	path = Timetable
 	url = https://github.com/SASTRA-Projects/Timetable
+	update = merge

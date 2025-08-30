@@ -1,106 +1,59 @@
-name: CodeQL Multi-Language Security Scan
+name: CodeQL Security Scan
 
-# Run on pushes and PRs to main (ignore non-source files) and weekly on Sunday UTC
 on:
   push:
-    branches: [ "main" ]
-    paths-ignore: &paths_ignore
+    branches: ["main"]
+    paths:
       - '**/*.py'
       - '**/*.html'
-      - '**/*.css'
       - '**/*.js'
       - '**/*.yml'
-      - '**/*.yaml'
   pull_request:
-    branches: [ "main" ]
-    paths-ignore: *paths_ignore
+    branches: ["main"]
+    paths:
+      - '**/*.py'
+      - '**/*.html'
+      - '**/*.js'
+      - '**/*.yml'
   schedule:
     - cron: '0 0 * * 0'
 
-# Limit concurrency to avoid duplicate runs for the same ref
-concurrency:
-  group: codeql-scan-${{ github.ref }}
-  cancel-in-progress: true
-
-# Default permissions for the workflow (more restrictive than full)
 permissions:
   contents: read
   actions: read
-  packages: read
   security-events: write
 
 jobs:
-  analyze:
-    name: Analyze — ${{ matrix.language }}
+  build-and-analyze:
+    name: Build, Validate, and Analyze
     runs-on: ubuntu-latest
-    permissions:                # Job-scoped permissions (reinforce)
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - language: actions
-            build-mode: none
-          - language: python
-            build-mode: none
-          - language: javascript-typescript
-            build-mode: none
-
+    
     steps:
-      - name: Checkout repository (with submodules)
-        # fetch submodules so -r Timetable/requirements.txt won't fail when Timetable is a submodule
+      - name: Checkout Repository (with submodules)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # This is the most critical line. It populates the Timetable/ directory.
           submodules: recursive
 
-      - name: Set up Python (optional helper for some CodeQL builds)
-        if: matrix.language == 'python' || matrix.language == 'javascript-typescript'
+      - name:  DIAGNOSTIC - List files in workspace
+        # This step will show us exactly what files are available after checkout.
+        run: ls -R
+
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          echo "Attempting to install dependencies..."
+          pip install -r requirements.txt
+          # This command should now succeed. If it fails, the 'ls -R' output will tell us why.
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: 'python, javascript' # Scan both languages in one go
 
-      - if: matrix.build-mode == 'manual'
-        name: Manual build-mode notice
-        shell: bash
-        run: |
-          echo 'You are using "manual" build-mode for one or more languages.'
-          echo 'Replace this step with your build commands (for example: make bootstrap; make release).'
-          exit 1
-
-      # If CodeQL can auto-build the project for this language, you can optionally run the autobuild step.
-      # Keep this commented if you don't want CodeQL to attempt auto-builds.
-      #- name: Attempt CodeQL auto build (optional)
-      #  uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL analysis
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        with:
-          # category is optional; using the language name makes the report categories clearer
-          category: ${{ matrix.language }}
-
-      - name: Check for Timetable requirements (diagnostic, non-failing)
-        if: always()
-        shell: bash
-        run: |
-          if grep -q "^-r Timetable/requirements.txt" requirements.txt 2>/dev/null; then
-            if [ ! -f Timetable/requirements.txt ]; then
-              echo "##[warning] requirements.txt references Timetable/requirements.txt but file not found in repo."
-              echo "If Timetable is a submodule, ensure checkout step includes 'submodules: true' (this workflow does)."
-              echo "If Timetable is not a submodule, either add Timetable/requirements.txt or remove the -r line."
-            else
-              echo "Timetable/requirements.txt is present."
-            fi
-          else
-            echo "No reference to Timetable/requirements.txt detected in requirements.txt."
-          fi
