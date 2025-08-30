@@ -6,7 +6,6 @@ on:
     paths:
       - '**/*.py'
       - '**/*.html'
-      - '**/*.css'
       - '**/*.js'
       - '**/*.yml'
   pull_request:
@@ -14,7 +13,6 @@ on:
     paths:
       - '**/*.py'
       - '**/*.html'
-      - '**/*.css'
       - '**/*.js'
       - '**/*.yml'
   schedule:
@@ -26,19 +24,20 @@ permissions:
   security-events: write
 
 jobs:
-  analyze:
-    name: CodeQL Analysis (${{ matrix.language }})
+  build-and-analyze:
+    name: Build, Validate, and Analyze
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ['python', 'javascript']
-
+    
     steps:
       - name: Checkout Repository (with submodules)
         uses: actions/checkout@v4
         with:
+          # This is the most critical line. It populates the Timetable/ directory.
           submodules: recursive
+
+      - name:  DIAGNOSTIC - List files in workspace
+        # This step will show us exactly what files are available after checkout.
+        run: ls -R
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -47,16 +46,14 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          echo "Installing dependencies from root and submodule..."
-          # This command will now succeed because the checkout step populated the Timetable/ directory.
+          echo "Attempting to install dependencies..."
           pip install -r requirements.txt
+          # This command should now succeed. If it fails, the 'ls -R' output will tell us why.
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
+          languages: 'python, javascript' # Scan both languages in one go
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        with:
-          category: ${{ matrix.language }}
