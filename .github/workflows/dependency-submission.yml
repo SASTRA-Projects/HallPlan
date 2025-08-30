@@ -17,6 +17,6 @@ jobs:
           submodules: recursive
 
       - name: Generate and Submit Dependency Snapshot
-        uses: github/dependency-submission-action@v3
+        uses: actions/dependency-submission-action@v1
         with:
           manifest-path: './requirements.txt'
