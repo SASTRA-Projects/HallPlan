@@ -17,6 +17,6 @@ jobs:
           submodules: recursive
 
       - name: Generate and Submit Dependency Snapshot
-        uses: actions/python-dependency-submission@v5
+        uses: actions/dependency-submission-action@v5
         with:
           manifest-path: './requirements.txt'
