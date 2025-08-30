@@ -32,11 +32,9 @@ jobs:
       - name: Checkout Repository (with submodules)
         uses: actions/checkout@v4
         with:
-          # This is the most critical line. It populates the Timetable/ directory.
           submodules: recursive
 
       - name:  DIAGNOSTIC - List files in workspace
-        # This step will show us exactly what files are available after checkout.
         run: ls -R
 
       - name: Set up Python
@@ -47,13 +45,12 @@ jobs:
       - name: Install Dependencies
         run: |
           echo "Attempting to install dependencies..."
-          pip install -r requirements.txt
-          # This command should now succeed. If it fails, the 'ls -R' output will tell us why.
+          pip3 install -r requirements.txt
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: 'python, javascript' # Scan both languages in one go
+          languages: 'python, javascript'
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
