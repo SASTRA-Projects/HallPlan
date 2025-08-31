@@ -1,47 +1,21 @@
 {% extends "layout.html" %}
 
-{% block title %} Upload Page {% endblock %}
+{% block title %}Upload Excel Sheets{% endblock %}
 
 {% block content %}
-<div id="upload_page"  style="max-width:600px;
-margin:1rem auto; padding:1rem; border-radius: 12px;">
-
-    <h1 style="text-align: center; margin-bottom: 1.5rem;"><b>Hall planning</b></h1>
-</div>
+<h1>Hall Plan</h1>
 
 <form action="/" method="post" enctype="multipart/form-data">
+  <label>Slots: </label>
+  <input type="file" name="file_1" required>
 
-<label> Slots: </label>
-<input type="file" name="file_1" required>
+  <label>Schedules: </label>
+  <input type="file" name="file_2" required>
 
-<label> Schedules: </label>
-<input type="file" name="file_2" required>
+  <label>Classrooms: </label>
+  <input type="file" name="file_3" required>
 
-<label> Classrooms: </label>
-<input type="file" name="file_3" required>
-<button type="submit" class="button" class="button"> Upload </button>
-
-<button type="button" onclick="window.location.href = '/' " class="button"> Back </button>
-
-
-<style>
-    form{
-      display: flex;
-      flex-direction: column;
-      gap:0.5rem;
-    }
-    label{
-      font-weight: bold;
-      margin-top: 0.5rem;
-    }
-    input[type="file"]{
-      padding: 0.5rem;
-      border:1px solid #ccc;
-      border-radius: 6px;
-    }
-    
-</style>
-
+  <button type="submit" class="button" class="button">Upload</button>
 </form>
 
 {% endblock %}
