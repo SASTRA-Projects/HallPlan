@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}Upload Excel Sheets{% endblock %}
+
+{% block content %}
+<h1>Hall Plan</h1>
+
+<form action="/" method="post" enctype="multipart/form-data">
+  <label>Slots: </label>
+  <input type="file" name="file_1" required>
+
+  <label>Schedules: </label>
+  <input type="file" name="file_2" required>
+
+  <label>Classrooms: </label>
+  <input type="file" name="file_3" required>
+
+  <button type="submit" class="button" class="button">Upload</button>
+</form>
+
+{% endblock %}
