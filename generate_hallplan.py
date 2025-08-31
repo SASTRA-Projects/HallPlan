@@ -3,6 +3,8 @@ from Timetable.typehints import (Connection, Cursor, FileStorage,
 from Timetable import fetch_data, show_data
 from datetime import datetime
 from random import randint
+import add_attendance as add_att
+import attendance
 import pandas as pd
 
 
@@ -79,7 +81,8 @@ def process_schedule(cursor: Cursor, /,
                               date_format="%d/%m/%Y",
                               names=headers).astype({"Year": "uint8",
                                                      "SlotNo": "uint8"})
-    schedules = schedules.merge(slots, how="inner", left_on="SlotNo", right_on="No")
+    schedules = schedules.merge(slots, how="inner",
+                                left_on="SlotNo", right_on="No")
     schedules["Sections"] = schedules.apply(get_sections, axis=1)
     schedules = schedules.explode("Sections")
     schedules = pd.concat([schedules.drop("Sections", axis=1)
@@ -94,13 +97,13 @@ def process_schedule(cursor: Cursor, /,
 
 
 def process_hall(cursor: Cursor, /,
-                  hall_sheet: FileStorage,
-                  schedules: pd.DataFrame, *,
-                  building_id: Optional[int] = None) -> pd.DataFrame:
+                 hall_sheet: FileStorage,
+                 schedules: pd.DataFrame, *,
+                 building_id: Optional[int] = None) -> pd.DataFrame:
     def get_class(room_no):
         cls = fetch_data.get_class(cursor, building_id=building_id,
                                    room_no=room_no)
-        return cls["id"]
+        return cls["id"] if cls else None
     headers = ["RoomNo", "Capacity", "Columns", "Date", "SlotNo"]
     to_types = {"ID": "uint16", "RoomNo": "uint16",
                 "Capacity": "uint8", "Columns": "uint8",
@@ -122,9 +125,25 @@ def process_hall(cursor: Cursor, /,
 def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                       campus_id: Optional[int] = None,
                       schedules: pd.DataFrame = pd.DataFrame(),
-                      halls: pd.DataFrame = pd.DataFrame()) -> None:
-    plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream",
-                                 "Year", "Section", "CourseCode", "RegNo"])
+                      halls: pd.DataFrame = pd.DataFrame()) -> pd.DataFrame:
+    def put_attendance(plan: pd.DataFrame):
+        attendance.create_hallplan(db_connector, cursor)
+        for _, data in plan.iterrows():
+            student = fetch_data.get_student(cursor, reg_no=data.RegNo)
+            if student:
+                student_id = student["id"]
+                details = {
+                    "date": data.Date,
+                    "slot_no": data.SlotNo,
+                    "course_code": data.CourseCode,
+                    "class_id": data.ClassID,
+                    "student_id": student_id,
+                    "is_present": False
+                }
+                add_att.add_attendance(db_connector, cursor, **details)
+
+    plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream", "Year",
+                                 "Section", "ClassID", "CourseCode", "RegNo"])
     for ds, grouped in schedules.groupby(["Date", "SlotNo"]):
         prg_years = []
         _halls = halls.query("Date == @ds[0] and SlotNo == @ds[1]")
@@ -136,7 +155,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                 prg_years.append(prg_year)
         for prg_year in prg_years:
             d, s, y = prg_year
-            prg_yr_schedule = grouped.query("Degree == @d and Stream == @s and Year == @y")
+            prg_yr_schedule = grouped.query("Degree == @d and Stream == @s "
+                                            "and Year == @y")
             for _, section in prg_yr_schedule.iterrows():
                 students = section.Students
                 course_code = section.CourseCode
@@ -148,8 +168,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     occupy = min(no_of_students, abs(half - hall.Seat))
                     for i in range(occupy):
                         plan = pd.concat([plan, pd.DataFrame([[
-                                *ds, *prg_year,
-                                section.Section, course_code, students[i]
+                                *ds, *prg_year, section.Section,
+                                hall.ID, course_code, students[i]
                             ]], columns=plan.columns)],
                             axis=0, ignore_index=True)
                     students = students[occupy:]
@@ -157,5 +177,7 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     hall.Seat += occupy
                     if hall.Seat in (half, cap):
                         hall_idx = (hall_idx + 1) % n
+
     plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
+    put_attendance(plan)
     return plan
