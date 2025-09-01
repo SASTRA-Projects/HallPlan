@@ -67,7 +67,7 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
     - `faculty_id`, `date`, `slot_no` \u2192 `class_id`
     - `class_id`, `date` \u2192 `faculty_id`
     """
-    cursor.execute("""CREATE TABLE IF NOT EXISTS `invigilator` (
+    cursor.execute("""CREATE TABLE IF NOT EXISTS `invigilators` (
                    `faculty_id` MEDIUMINT UNSIGNED NOT NULL,
                    `date` DATE NOT NULL,
                    `slot_no` TINYINT UNSIGNED NOT NULL,
@@ -77,5 +77,8 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    ON UPDATE CASCADE ON DELETE RESTRICT,
                    FOREIGN KEY(`class_id`) REFERENCES `classes`(`id`)
                    ON UPDATE CASCADE ON DELETE RESTRICT,
-                   UNIQUE(`date`, `class_id`, `faculty_id`)
+                   UNIQUE(`date`, `class_id`, `faculty_id`),
+                   FOREIGN KEY(`date`, `slot_no`)
+                   REFERENCES `attendance`(`date`, `slot_no`)
+                   ON UPDATE CASCADE ON DELETE RESTRICT
     )""")

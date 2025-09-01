@@ -23,6 +23,16 @@ def add_attendance(db_connector: Connection,
     db_connector.commit()
 
 
+def add_attendances(db_connector: Connection,
+                    cursor: Cursor,
+                    students: list[tuple[bool | int | str]]) -> None:
+    cursor.executemany("""INSERT INTO `attendance`
+                       (`student_id`, `date`, `slot_no`,
+                       `course_code`, `class_id`, `is_present`)
+                       VALUES (%s, %s, %s, %s, %s, %s)""", students)
+    db_connector.commit()
+
+
 def add_invigilator(db_connector: Connection,
                     cursor: Cursor, /, *,
                     faculty_id: Optional[int] = None,
