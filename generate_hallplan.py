@@ -20,6 +20,7 @@ from random import randint
 import add_attendance as add_att
 import attendance
 import pandas as pd
+import pymysql
 
 
 def fmt(t: str) -> datetime:
@@ -119,6 +120,7 @@ def process_hall(cursor: Cursor, /,
         cls = fetch_data.get_class(cursor, building_id=building_id,
                                    room_no=room_no)
         return cls["id"] if cls else None
+
     headers = ["RoomNo", "Capacity", "Columns", "Date", "SlotNo"]
     to_types = {"ID": "uint16", "RoomNo": "uint16",
                 "Capacity": "uint8", "Columns": "uint8",
@@ -200,5 +202,9 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
 
     plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
     plan.astype(to_types)
-    put_attendance(plan)
+    try:
+        put_attendance(plan)
+    except pymysql.err.IntegrityError as exception:
+        print(exception)
+
     return plan

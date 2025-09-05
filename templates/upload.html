@@ -1,9 +1,24 @@
+<!-- Copyright 2025 Harikrishna Srinivasan
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. -->
+
+
 {% extends "layout.html" %}
 
 {% block title %}Upload Excel Sheets{% endblock %}
 
 {% block head %}
-  <style>
+<style>
     .card {
         max-width: 100rem;
         width: 100%;
@@ -60,25 +75,25 @@
         color: #9ca3af;
     }
     .upload {
-      width: 95%;
-      padding: 0.75rem;
-      border-radius: 8px;
-      font-size: 1.2rem;
-      font-weight: 500;
-      background-color: var(--accent-dark);
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+        width: 95%;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 500;
+        background-color: var(--accent-dark);
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     .upload:hover {
-      transform: scale(1.04);
-      background-color: var(--accent-dark);
-      color: white;
+        transform: scale(1.05);
+        background-color: var(--accent-dark);
+        color: white;
     }
     [data-theme="light"] .upload:hover {
-      background-color: var(--accent-dark);
-      color: white;
+        background-color: var(--accent-dark);
+        color: white;
     }
     @keyframes fadeInUp {
         from {
@@ -98,14 +113,14 @@
             font-size: 0.95rem;
         }
     }
-  </style>
+</style>
 {% endblock %}
 
 {% block content %}
 <h1>Upload Excel Sheets</h1>
 
 <div class="card">
-  <form action="/upload" method="post" enctype="multipart/form-data">
+<form action="/upload" method="post" enctype="multipart/form-data">
     <div class="field">
     <label for="slots">🗓 Slots <span class="required">*</span></label>
     <input type="file" id="slots" name="slots" required>
@@ -125,6 +140,9 @@
     </div>
 
     <button type="submit" class="upload">Upload & Process</button>
-  </form>
+    {% if error_message %}
+        <div class="error message">{{ error_message }}</div>
+    {% endif %}
+</form>
 </div>
 {% endblock %}
