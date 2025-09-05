@@ -2,20 +2,129 @@
 
 {% block title %}Upload Excel Sheets{% endblock %}
 
+{% block head %}
+  <style>
+    .card {
+        max-width: 100rem;
+        width: 100%;
+        margin: 0 auto 1rem;
+        padding: 1.8rem;
+        border-radius: 0.8rem;
+        background-color: var(--input-bg-light);
+        box-shadow: var(--shadow);
+        animation: fadeInUp 0.6s ease-out;
+    }
+    [data-theme="dark"] .card {
+        background-color: var(--input-bg-dark);
+    }
+    .field {
+        margin-bottom: 1rem;
+        text-align: left;
+    }
+    .field label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+        font-size: 1rem;
+        color: var(--accent);
+    }
+    .required {
+        color: red;
+        font-weight: 600;
+    }
+    .field input[type="file"] {
+        width: 100%;
+        padding: 0.2rem;
+        border: 1px solid var(--input-border-light);
+        border-radius: 0.5rem;
+        background-color: var(--input-bg-light);
+        color: var(--text-light);
+        transition: border-color 0.3s ease, transform 0.2s ease;
+    }
+    [data-theme="dark"] .field input[type="file"] {
+        border: 1px solid var(--input-border-dark);
+        background-color: var(--input-bg-dark);
+        color: var(--text-dark);
+    }
+    .field input[type="file"]:hover {
+        border-color: var(--accent);
+        transform: scale(1.02);
+        cursor: pointer;
+    }
+    .note {
+        font-size: 0.8rem;
+        margin-top: 0.2rem;
+        color: #6b7280;
+    }
+    [data-theme="dark"] .note {
+        color: #9ca3af;
+    }
+    .upload {
+      width: 95%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      background-color: var(--accent-dark);
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .upload:hover {
+      transform: scale(1.04);
+      background-color: var(--accent-dark);
+      color: white;
+    }
+    [data-theme="light"] .upload:hover {
+      background-color: var(--accent-dark);
+      color: white;
+    }
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(0.8rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @media (max-width: 48rem) {
+        .card {
+            padding: 1rem;
+        }
+        .field label {
+            font-size: 0.95rem;
+        }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<h1>Hall Plan</h1>
+<h1>Upload Excel Sheets</h1>
 
-<form action="/" method="post" enctype="multipart/form-data">
-  <label>Slots: </label>
-  <input type="file" name="file_1" required>
+<div class="card">
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <div class="field">
+    <label for="slots">🗓 Slots <span class="required">*</span></label>
+    <input type="file" id="slots" name="slots" required>
+    <p class="note">Upload slot timings in excel format.</p>
+    </div>
 
-  <label>Schedules: </label>
-  <input type="file" name="file_2" required>
+    <div class="field">
+    <label for="schedules">📘 Schedules <span class="required">*</span></label>
+    <input type="file" id="schedules" name="schedules" required>
+    <p class="note">Upload the exam timetable.</p>
+    </div>
 
-  <label>Classrooms: </label>
-  <input type="file" name="file_3" required>
+    <div class="field">
+    <label for="classrooms">🏫 Classrooms <span class="required">*</span></label>
+    <input type="file" id="classrooms" name="classrooms" required>
+    <p class="note">Upload available classrooms with no. of seats.</p>
+    </div>
 
-  <button type="submit" class="button" class="button">Upload</button>
-</form>
-
+    <button type="submit" class="upload">Upload & Process</button>
+  </form>
+</div>
 {% endblock %}

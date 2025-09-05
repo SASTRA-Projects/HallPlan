@@ -1,5 +1,19 @@
-from Timetable.typehints import (Connection, Cursor, FileStorage,
-                                 Optional, Tuple, Dict)
+# Copyright 2025 Harikrishna Srinivasan
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+from Timetable.typehints import Connection, Cursor, FileStorage, Optional
 from Timetable import fetch_data, show_data
 from datetime import datetime
 from random import randint
@@ -24,7 +38,7 @@ def process_schedule(cursor: Cursor, /,
                      schedule_sheet: FileStorage,
                      slots: pd.DataFrame, *,
                      campus_id: Optional[int] = None) -> pd.DataFrame:
-    deg_stream = {}
+    deg_stream: dict[tuple[str, str], int] = {}
 
     def get_sections(row: pd.Series) -> list[dict[str, int | str]]:
         year, degree, stream = row[["Year", "Degree", "Stream"]]
@@ -37,14 +51,14 @@ def process_schedule(cursor: Cursor, /,
                     year=year)]
 
     def intersect(schedules: pd.DataFrame,
-                  periods: Tuple[Dict[str, bool | int | str]]) -> None:
-        start_end = {}
+                  periods: tuple[dict[str, bool | int | str]]) -> None:
+        start_end: dict[tuple[datetime, datetime], int] = {}
 
         def periods_intersect(start: str, end: str) -> list[int]:
             _start = fmt(start)
             _end = fmt(end)
             if period_ids := start_end.get((_start, _end)):
-                return period_ids
+                return [period_ids]
 
             _pstart = _pend = 0
             for period in periods:
