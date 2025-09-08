@@ -115,3 +115,4 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    REFERENCES `attendance`(`date`, `slot_no`)
                    ON UPDATE CASCADE ON DELETE RESTRICT
     )""")
+    db_connector.commit()
