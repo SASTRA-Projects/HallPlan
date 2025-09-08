@@ -17,8 +17,20 @@ from Timetable.typehints import Connection, Cursor, Optional
 import datetime
 
 """
-Adds the data to the attendance and invigilator tables.
+Adds the data in the attendance, slots and invigilator tables.
 """
+
+
+def add_slot(db_connector: Connection,
+              cursor: Cursor, /, *,
+              no: Optional[int] = None,
+              start_time: Optional[datetime.datetime] = None,
+              end_time: Optional[datetime.datetime] = None) -> None:
+    cursor.execute("""INSERT INTO `slots`
+                   (`no`, `start_time`, `end_time`)
+                   VALUES (%s, %s, %s)""",
+                   (no, start_time, end_time))
+    db_connector.commit()
 
 
 def add_attendance(db_connector: Connection,

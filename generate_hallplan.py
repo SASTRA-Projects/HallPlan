@@ -27,11 +27,23 @@ def fmt(t: str) -> datetime:
     return datetime.strptime(t, "%H:%M")
 
 
-def process_slot(slot_sheet: FileStorage) -> pd.DataFrame:
+def process_slot(db_connector: Connection, cursor: Cursor, /,
+                 slot_sheet: FileStorage) -> pd.DataFrame:
+    attendance.create_hallplan(db_connector, cursor)
     headers = ["No", "StartTime", "EndTime"]
     slots = pd.read_excel(slot_sheet, sheet_name="slots",
                           names=headers,
-                          engine="openpyxl").astype({"No": "uint8"})
+                          engine="openpyxl").astype({"No": "uint8"},
+                                                    copy=False)
+    try:
+        for _, slot in slots.iterrows():
+            add_att.add_slot(db_connector, cursor,
+                             no=slot.No,
+                             start_time=slot.StartTime,
+                             end_time=slot.EndTime)
+    except pymysql.err.IntegrityError as exception:
+        print(exception)
+
     return slots
 
 
@@ -92,11 +104,12 @@ def process_schedule(cursor: Cursor, /,
             section_id=section.SectionID)]
 
     headers = ["Year", "Degree", "Stream", "CourseCode", "Date", "SlotNo"]
-    schedules = pd.read_excel(schedule_sheet, sheet_name="schedules",
-                              keep_default_na=False, parse_dates=["Date"],
-                              date_format="%d/%m/%Y",
-                              names=headers).astype({"Year": "uint8",
-                                                     "SlotNo": "uint8"})
+    schedules = pd.read_excel(
+        schedule_sheet, sheet_name="schedules",
+        keep_default_na=False, parse_dates=["Date"],
+        date_format="%d/%m/%Y",
+        names=headers
+    ).astype({"Year": "uint8", "SlotNo": "category"}, copy=False)
     schedules = schedules.merge(slots, how="inner",
                                 left_on="SlotNo", right_on="No")
     schedules["Sections"] = schedules.apply(get_sections, axis=1)
@@ -114,17 +127,15 @@ def process_schedule(cursor: Cursor, /,
 
 def process_hall(cursor: Cursor, /,
                  hall_sheet: FileStorage,
-                 schedules: pd.DataFrame, *,
                  building_id: Optional[int] = None) -> pd.DataFrame:
     def get_class(room_no):
         cls = fetch_data.get_class(cursor, building_id=building_id,
                                    room_no=room_no)
         return cls["id"] if cls else None
 
-    headers = ["RoomNo", "Capacity", "Columns", "Date", "SlotNo"]
+    headers = ["RoomNo", "Capacity", "Date", "SlotNo"]
     to_types = {"ID": "uint16", "RoomNo": "uint16",
-                "Capacity": "uint8", "Columns": "uint8",
-                "Seat": "uint8"}
+                "Capacity": "uint8", "Seat": "uint8"}
     halls = pd.read_excel(hall_sheet, sheet_name="halls",
                           parse_dates=["Date"],
                           date_format="%d/%m/%Y",
@@ -135,16 +146,14 @@ def process_hall(cursor: Cursor, /,
         axis=1
     )
     halls["Seat"] = 0
-    halls.astype(to_types)
+    halls = halls.astype(to_types, copy=False)
     return halls
 
 
 def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
-                      campus_id: Optional[int] = None,
                       schedules: pd.DataFrame = pd.DataFrame(),
                       halls: pd.DataFrame = pd.DataFrame()) -> pd.DataFrame:
     def put_attendance(plan: pd.DataFrame):
-        attendance.create_hallplan(db_connector, cursor)
         students = []
         for _, data in plan.iterrows():
             students.append((
@@ -158,8 +167,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
         add_att.add_attendances(db_connector, cursor, students)
 
     plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream", "Year",
-                                 "Section", "ClassID", "CourseCode", "RegNo",
-                                 "StudentID"])
+                                 "Section", "ClassID", "RoomNo", "CourseCode",
+                                 "RegNo", "StudentID"])
     to_types = {
         "SlotNo": "uint8",
         "Year": "uint16",
@@ -191,7 +200,7 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     for i in range(occupy):
                         plan = pd.concat([plan, pd.DataFrame([[
                                 *ds, *prg_year, section.Section,
-                                hall.ID, course_code, *students[i]
+                                hall.ID, hall.RoomNo, course_code, *students[i]
                             ]], columns=plan.columns)],
                             axis=0, ignore_index=True)
                     students = students[occupy:]
@@ -201,7 +210,7 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                         hall_idx = (hall_idx + 1) % n
 
     plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
-    plan.astype(to_types)
+    plan = plan.astype(to_types, copy=False)
     try:
         put_attendance(plan)
     except pymysql.err.IntegrityError as exception:

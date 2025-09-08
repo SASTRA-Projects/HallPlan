@@ -30,6 +30,7 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
 
     Tables Created
     ==============
+    - **``slots``**: Maps slot number with start and end time of the slot.
     - **``attendance``**: Stores attendance information for each student.
     - **``invigilator``**: Stores invigilator with date, slot number.
 
@@ -58,6 +59,19 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
     """
     Functional Dependencies
     =======================
+    - `no` \u2192 `start_time`, `end_time`
+    - `start_time`, `end_time` \u2192 `no`
+    """
+    cursor.execute("""CREATE TABLE IF NOT EXISTS `slots` (
+                   `no` TINYINT UNSIGNED NOT NULL,
+                   `start_time` TIME NOT NULL,
+                   `end_time` TIME NOT NULL,
+                   PRIMARY KEY(`no`),
+                   CHECK(`start_time` < `end_time`)
+    )""")
+    """
+    Functional Dependencies
+    =======================
     - `student_id`, `date`, `slot_no` \u2192 `class_id`,
                                              `course_code`, `is_present`
     - `student_id`, `date`, `course_code` \u2192 `slot_no`
@@ -72,6 +86,8 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    `is_present` BOOLEAN NOT NULL,
                    PRIMARY KEY(`date`, `slot_no`, `student_id`),
                    FOREIGN KEY(`student_id`) REFERENCES `students`(`id`)
+                   ON UPDATE CASCADE ON DELETE RESTRICT,
+                   FOREIGN KEY(`slot_no`) REFERENCES `slots`(`no`)
                    ON UPDATE CASCADE ON DELETE RESTRICT,
                    FOREIGN KEY(`class_id`) REFERENCES `classes`(`id`)
                    ON UPDATE CASCADE ON DELETE RESTRICT
@@ -89,6 +105,8 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    `class_id` MEDIUMINT UNSIGNED NOT NULL,
                    PRIMARY KEY(`date`, `slot_no`, `faculty_id`),
                    FOREIGN KEY(`faculty_id`) REFERENCES `faculties`(`id`)
+                   ON UPDATE CASCADE ON DELETE RESTRICT,
+                   FOREIGN KEY(`slot_no`) REFERENCES `slots`(`no`)
                    ON UPDATE CASCADE ON DELETE RESTRICT,
                    FOREIGN KEY(`class_id`) REFERENCES `classes`(`id`)
                    ON UPDATE CASCADE ON DELETE RESTRICT,
