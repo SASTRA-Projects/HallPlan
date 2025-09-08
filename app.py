@@ -69,12 +69,9 @@ def hallplan() -> str:
     if table:
         date = request.form.get("date")
         slot = request.form.get("slot")
-        print(date, slot, 1)
         t1 = table
         if date:
-            print(t1)
             t1 = [t for t in t1 if fmt_date(t["date"]) == date]
-            print(t1)
         if slot:
             t1 = [t for t in t1 if str(t["slot_no"]) == slot]
         return render_template("hallplan.html", table=t1,

@@ -125,19 +125,16 @@ limitations under the License. -->
     <input type="file" id="slots" name="slots" required>
     <p class="note">Upload slot timings in excel format.</p>
     </div>
-
     <div class="field">
     <label for="schedules">📘 Schedules <span class="required">*</span></label>
     <input type="file" id="schedules" name="schedules" required>
     <p class="note">Upload the exam timetable.</p>
     </div>
-
     <div class="field">
     <label for="classrooms">🏫 Classrooms <span class="required">*</span></label>
     <input type="file" id="classrooms" name="classrooms" required>
     <p class="note">Upload available classrooms with no. of seats.</p>
     </div>
-
     <button type="submit" class="upload">Upload & Process</button>
     {% if error_message %}
         <div class="error message">{{ error_message }}</div>
