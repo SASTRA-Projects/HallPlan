@@ -215,5 +215,6 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
         put_attendance(plan)
     except pymysql.err.IntegrityError as exception:
         print(exception)
+        raise
 
     return plan

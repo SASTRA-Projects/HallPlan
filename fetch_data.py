@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-from Timetable.typehints import Cursor, Optional
+from Timetable.typehints import Cursor, Literal, Optional
 import datetime
+import pandas as pd
 
 """
 Shows the data for tables,
@@ -24,6 +25,7 @@ for which data will change frequently.
 
 def get_attendance(
     cursor: Cursor, /, *,
+    fmt: Literal["sql", "pandas"] = "sql",
     date: Optional[datetime.date] = None,
     slot_no: Optional[int] = None,
     section_id: Optional[int] = None,
@@ -31,7 +33,32 @@ def get_attendance(
     course_code: Optional[str] = None,
     student_id: Optional[int] = None,
     is_present: Optional[bool] = None
-) -> tuple[dict[str, int | str | bool], ...]:
+) -> pd.DataFrame | tuple[dict[str, int | str | bool], ...]:
+    if fmt == "pandas":
+        cursor.execute("""SELECT `date` AS `Date`,
+                       `slot_no` AS `SlotNo`,
+                       `degree` AS `Degree`,
+                       `stream` AS `Stream`,
+                       `year` AS `Year`,
+                       `section` AS `Section`,
+                       `room_no` AS `RoomNo`,
+                       `course_code` AS `CourseCode`,
+                       CONCAT(
+                            `campus_id`,
+                            LPAD(MOD((`join_year` + `duration`),
+                                 100), 2, '0'),
+                            LPAD(`programme_id`, 3, '0'),
+                            LPAD(`roll_no`, 3, '0')
+                       ) AS `RegNo`
+                       FROM `attendance` `att`
+                       JOIN `classes`
+                       ON `class_id`=`classes`.`id`
+                       JOIN `section_student_details` `SSD`
+                       ON `att`.`student_id`=`SSD`.`student_id`
+                       JOIN `degrees`
+                       ON `degrees`.`name`=`degree`""")
+        return pd.DataFrame(cursor.fetchall(), copy=False)
+
     if date:
         if slot_no:
             if section_id:

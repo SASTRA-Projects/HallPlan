@@ -21,7 +21,9 @@ from flask import Flask, render_template, request
 from generate_hallplan import (generate_hallplan, process_hall,
                                process_schedule, process_slot)
 from jinja2 import FileSystemLoader
+import fetch_data
 import os
+import pandas as pd
 import secrets
 
 
@@ -40,13 +42,16 @@ template_paths = [
 
 app.jinja_env.loader = FileSystemLoader(template_paths)
 
-app.before_request(lambda: check_login(login="logging_in"))
+app.before_request(check_login)
 
 
-@app.route("/login", methods=["GET", "POST"])
-@nocache
-def logging_in() -> Response | str:
-    return login("upload")
+app.route("/login", methods=["GET", "POST"])(nocache(login))
+
+
+@app.route("/home")
+@app.route("/")
+def index() -> str:
+    return render_template("./index.html")
 
 
 app.route("/about")(about)
@@ -55,45 +60,13 @@ app.route("/about")(about)
 @app.route("/upload")
 def upload() -> Response | str:
     table.clear()
-    return render_template("upload.html")
+    return render_template("./upload.html")
 
 
-@app.route("/hallplan", methods=["POST"])
-def hallplan() -> str:
+def _hallplan(plan: pd.DataFrame) -> None:
     def to_fmt(date: datetime) -> str:
         return date.strftime("%d/%m/%Y")
 
-    def fmt_date(date: str) -> str:
-        return str(datetime.strptime(date, "%d/%m/%Y"))
-
-    if table:
-        date = request.form.get("date")
-        slot = request.form.get("slot")
-        t1 = table
-        if date:
-            t1 = [t for t in t1 if fmt_date(t["date"]) == date]
-        if slot:
-            t1 = [t for t in t1 if str(t["slot_no"]) == slot]
-        return render_template("hallplan.html", table=t1,
-                               dates=dates, slots=slots)
-
-    if not (request.files.get("slots") and request.files.get("schedules")
-            and request.files.get("classrooms")):
-        return render_template("upload.html",
-                               error_message="Please upload all 3 files")
-
-    __slots = request.files["slots"]
-    _schedules = request.files["schedules"]
-    _classrooms = request.files["classrooms"]
-    _slots = process_slot(sql.db_connector, sql.cursor, __slots)
-    schedules = process_schedule(sql.cursor, _schedules,
-                                 slots=_slots, campus_id=2)
-    slots.extend(_slots["No"].unique().tolist())
-    dates.extend(schedules["Date"].unique().tolist())
-
-    classrooms = process_hall(sql.cursor, _classrooms, building_id=3)
-    plan = generate_hallplan(sql.db_connector, sql.cursor,
-                             schedules=schedules, halls=classrooms)
     for date_slot, data in plan.groupby(["Date", "SlotNo"]):
         date, slot_no = date_slot
         section_groups = data.groupby(["Year", "Degree", "Stream", "Section"])
@@ -117,8 +90,56 @@ def hallplan() -> str:
                 "halls": {hall: f"{reg_no['_min']}-{reg_no['_max']}"
                           for hall, reg_no in halls.iterrows()}
             })
-    return render_template("hallplan.html", table=table,
+    slots.extend(plan["SlotNo"].unique().tolist())
+    dates.extend(plan["Date"].apply(to_fmt).unique().tolist())
+
+
+@app.route("/hallplan", methods=["GET", "POST"])
+def hallplan() -> str:
+    if not (sql.db_connector and sql.cursor):
+        return render_template("./failed.html",
+                               reason="Unable to authenticate!")
+
+    if request.method == "GET":
+        plan = fetch_data.get_attendance(sql.cursor, fmt="pandas")
+        if isinstance(plan, pd.DataFrame):
+            _hallplan(plan)
+
+    if table:
+        _date = request.form.get("date")
+        _slot = request.form.get("slot")
+        t1 = table
+        if _date:
+            t1 = [t for t in t1 if str(t["date"]) == _date]
+        if _slot:
+            t1 = [t for t in t1 if str(t["slot_no"]) == _slot]
+        return render_template("./hallplan.html", table=t1,
+                               dates=dates, slots=slots)
+
+    if request.method == "POST":
+        if not (request.files.get("slots") and request.files.get("schedules")
+                and request.files.get("classrooms")):
+            return render_template("./upload.html",
+                                   error_message="Please upload all 3 files")
+
+        __slots = request.files["slots"]
+        _schedules = request.files["schedules"]
+        _classrooms = request.files["classrooms"]
+        _slots = process_slot(sql.db_connector, sql.cursor, __slots)
+        schedules = process_schedule(sql.cursor, _schedules,
+                                     slots=_slots, campus_id=2)
+        classrooms = process_hall(sql.cursor, _classrooms, building_id=3)
+        plan = generate_hallplan(sql.db_connector, sql.cursor,
+                                 schedules=schedules, halls=classrooms)
+        _hallplan(plan)
+    return render_template("./hallplan.html", table=table,
                            dates=dates, slots=slots)
+
+
+@app.route("/attendance", methods=["GET", "POST"])
+def attendance() -> str:
+    # TODO: Display based on date, slot & room_no
+    return render_template("./attendance.html")
 
 
 app.route("/logout")(logout)
