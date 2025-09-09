@@ -100,7 +100,7 @@ def hallplan() -> str:
         return render_template("./failed.html",
                                reason="Unable to authenticate!")
 
-    if request.method == "GET":
+    if request.method == "GET" and not table:
         plan = fetch_data.get_attendance(sql.cursor, fmt="pandas")
         if isinstance(plan, pd.DataFrame):
             _hallplan(plan)
@@ -114,7 +114,8 @@ def hallplan() -> str:
         if _slot:
             t1 = [t for t in t1 if str(t["slot_no"]) == _slot]
         return render_template("./hallplan.html", table=t1,
-                               dates=dates, slots=slots)
+                               dates=dates, slots=slots,
+                               date=_date, slot=_slot)
 
     if request.method == "POST":
         if not (request.files.get("slots") and request.files.get("schedules")

@@ -162,7 +162,7 @@ limitations under the License. -->
         <div class="filter-group">
             <label for="date-select">Date:</label>
             <select name="date" id="date-select">
-                <option value="" disabled selected>All Dates</option>
+                <option value="" disabled selected>{{ date or "All Dates" }}</option>
                 {% for date in dates %}
                     <option value="{{ date }}">{{ date }}</option>
                 {% endfor %}
@@ -171,7 +171,7 @@ limitations under the License. -->
         <div class="filter-group">
             <label for="slot-select">Slot:</label>
             <select name="slot" id="slot-select">
-                <option value="" disabled selected>All Slots</option>
+                <option value="" disabled selected>{{ slot_no or "All Slots" }}</option>
                 {% for slot in slots %}
                     <option value="{{ slot }}">{{ slot }}</option>
                 {% endfor %}
