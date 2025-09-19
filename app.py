@@ -17,7 +17,7 @@ from Timetable.app import (about, check_login, login, logout,
                            nocache, page_not_found, sql)
 from Timetable.typehints import Response
 from datetime import datetime
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request, url_for
 from generate_hallplan import (generate_hallplan, process_hall,
                                process_schedule, process_slot)
 from jinja2 import FileSystemLoader
@@ -58,7 +58,7 @@ app.route("/about")(about)
 
 
 @app.route("/upload")
-def upload() -> Response | str:
+def upload() -> str:
     table.clear()
     return render_template("./upload.html")
 
@@ -141,6 +141,51 @@ def hallplan() -> str:
 def attendance() -> str:
     # TODO: Display based on date, slot & room_no
     return render_template("./attendance.html")
+
+
+@app.route("/add", methods=["GET", "POST"])
+def add_user() -> Response | str:
+    def add(usr: str, pwd: str) -> None | str:
+        if sql.cursor:
+            try:
+                sql.cursor.execute("""CREATE USER IF NOT EXISTS %s@'%%' IDENTIFIED BY %s""",
+                                   (usr, pwd))
+                sql.cursor.execute("""GRANT SELECT, UPDATE ON `SASTRA`.`attendance` TO %s@'%%'""", (usr,))
+                sql.cursor.execute("""FLUSH PRIVILEGES""")
+            except Exception:
+                return render_template("./failed.html", reason="User already present")
+
+    if sql.cursor:
+        if request.method == "GET":
+            return render_template("./login.html", role="Exam",
+                                   user="User", auth="/add")
+        if (usr := request.form.get("user")) \
+           and (pwd := request.form.get("password")):
+            add(usr, pwd)
+        return redirect(url_for("index"))
+    return render_template("./failed.html",
+                           reason="Not logged in properly!")
+
+
+@app.route("/remove", methods=["GET", "POST"])
+def remove_user() -> Response | str:
+    def remove(usr: str, pwd: str) -> None | str:
+        if sql.cursor:
+            try:
+                sql.cursor.execute("""DROP USER IF EXISTS `%s`@'%%'""", (usr,))
+            except Exception as e:
+                return render_template("./failed.html", reason="Incorrect user name")
+ 
+    if sql.cursor:
+        if request.method == "GET":
+            return render_template("./login.html", role="Exam",
+                                   user="User", auth="/remove")
+        if (usr := request.form.get("user")) \
+           and (pwd := request.form.get("password")):
+            remove(usr, pwd)
+        return redirect(url_for("index"))
+    return render_template("./failed.html",
+                           reason="Not logged in properly!")
 
 
 app.route("/logout")(logout)
