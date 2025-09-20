@@ -26,18 +26,13 @@ def update_attendance(db_connector: Connection,
                       student_id: Optional[int],
                       date: Optional[datetime.date],
                       slot_no: Optional[int],
-                      course_code: Optional[str],
-                      class_id: Optional[int],
                       is_present: Optional[bool]) -> None:
     cursor.execute("""UPDATE `attendance`
-                   SET `student_id`=%s
+                   SET `is_present`=%s
                    WHERE `date`=%s
                    AND `slot_no`=%s
-                   AND `course_code`=%s
-                   AND `class_id`=%s
-                   AND `is_present`=%s""",
-                   (student_id, date, slot_no,
-                    course_code, class_id, is_present))
+                   AND `student_id`=%s""",
+                   (is_present, date, slot_no, student_id))
     db_connector.commit()
 
 
@@ -45,26 +40,23 @@ def update_attendances(db_connector: Connection,
                        cursor: Cursor,
                        students: list[tuple[bool | int | str]]) -> None:
     cursor.executemany("""UPDATE `attendance`
-                       SET `student_id`=%s
+                       SET `is_present`=%s
                        WHERE `date`=%s
                        AND `slot_no`=%s
-                       AND `course_code`=%s
-                       AND `class_id`=%s
-                       AND `is_present`=%s
-                       (`student_id`)""", students)
+                       AND `student_id`=%s""", students)
     db_connector.commit()
 
 
-def add_invigilator(db_connector: Connection,
-                    cursor: Cursor, /, *,
-                    faculty_id: Optional[int] = None,
-                    date: Optional[datetime.date] = None,
-                    slot_no: Optional[int] = None,
-                    class_id: Optional[int] = None) -> None:
+def update_invigilator(db_connector: Connection,
+                       cursor: Cursor, /, *,
+                       faculty_id: Optional[int] = None,
+                       date: Optional[datetime.date] = None,
+                       slot_no: Optional[int] = None,
+                       class_id: Optional[int] = None) -> None:
     cursor.execute("""UPDATE `invigilator`
                    SET `faculty_id`=%s
                    WHERE `date`=%s
                    AND `slot_no`=%s
-                   AND `class_id`=%s)""",
+                   AND `class_id`=%s""",
                    (faculty_id, date, slot_no, class_id))
     db_connector.commit()

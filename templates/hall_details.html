@@ -1,0 +1,146 @@
+<!-- Copyright 2025 Harikrishna Srinivasan
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. -->
+
+
+{% extends "layout.html" %}
+
+{% block title %}Hall Details{% endblock %}
+
+{% block head %}
+<style>
+    .details-container {
+        display: flex;
+        align-items: flex-start;
+        padding-top: 1rem 0 0.25rem;
+        width: 100%;
+    }
+    .details-form {
+        width: 100%;
+        min-width: 325px;
+        padding: 2rem;
+        border-radius: 0.75rem;
+        background-color: var(--input-bg-light);
+        border: 1px solid var(--input-border-light);
+        box-shadow: var(--shadow);
+    }
+    [data-theme="dark"] .details-form {
+        background-color: var(--input-bg-dark);
+        border-color: var(--input-border-dark);
+    }
+    .details-form h1 {
+        text-align: center;
+        font-size: 1.5rem;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+    }
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 400;
+        font-size: 1rem;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 0.6rem 0.5rem;
+        font-size: 1rem;
+        border-radius: 0.375rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: var(--bg-light);
+        color: var(--text-light);
+        border: 1px solid var(--input-border-light);
+    }
+    [data-theme="dark"] .form-group input {
+        background-color: #272d39;
+        color: var(--text-dark);
+        border-color: var(--input-border-dark);
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+    }
+    .error-message {
+        color: var(--error);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    .active-button {
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="details-container">
+    <form class="details-form" method="POST" action="/attendance">
+        <h1>Hall Details</h1>
+        <div class="form-group">
+            <label for="school">School</label>
+            <input type="text" id="school" name="school" list="schools-list" required>
+            <datalist id="schools-list">
+                {% for school in schools %}
+                    <option value="{{ school }}">
+                {% endfor %}
+            </datalist>
+            <div id="school-error" class="error-message"></div>
+        </div>
+        <div class="form-group">
+            <label for="slot_no">Slot Number</label>
+            <input type="number" id="slot_no" name="slot_no" min="{{ slot_min }}" max="{{ slot_max }}" required>
+        </div>
+        <div class="form-group">
+            <label for="room_no">Room Number</label>
+            <input type="number" id="room_no" name="room_no" required>
+        </div>
+        {% if user == "avnadmin" %}
+        <div class="form-group">
+            <label for="date">Date</label>
+            <input type="date" id="date" name="date">
+        </div>
+        {% endif %}
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="active-button" name="action" value="proceed">Proceed</button>
+            {% if user == "avnadmin" %}
+                <button type="submit" class="active-button" name="action" value="view">View</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const form = document.querySelector(".details-form");
+        const schoolInput = document.getElementById("school");
+        const schoolsDatalist = document.getElementById("schools-list");
+        const errorElement = document.getElementById("school-error");
+        form.addEventListener("submit", (event) => {
+            const validOptions = Array.from(schoolsDatalist.options).map(option => option.value);
+            const currentValue = schoolInput.value;
+            if (!validOptions.includes(currentValue)) {
+                event.preventDefault();
+                errorElement.textContent = "Please select a valid school from the list";
+                schoolInput.focus();
+            }
+            else
+                errorElement.textContent = "";
+        });
+        schoolInput.addEventListener("input", () => {
+            if (errorElement.textContent)
+                errorElement.textContent = "";
+        });
+    });
+</script>
+{% endblock %}

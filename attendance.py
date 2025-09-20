@@ -72,9 +72,9 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
     """
     Functional Dependencies
     =======================
-    - `student_id`, `date`, `slot_no` \u2192 `class_id`,
-                                             `course_code`, `is_present`
-    - `student_id`, `date`, `course_code` \u2192 `slot_no`
+    - `student_id`, `date`, `slot_no` \u2192 `class_id`, `course_code`,
+                                             `seat`, `is_present`
+    - `student_id`, `date`, `course_code` \u2192 `slot_no`, `seat`,
                                                  `course_code`, `is_present`
     """
     cursor.execute("""CREATE TABLE IF NOT EXISTS `attendance` (
@@ -83,6 +83,7 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    `slot_no` TINYINT UNSIGNED NOT NULL,
                    `course_code` VARCHAR(10) NOT NULL,
                    `class_id` MEDIUMINT UNSIGNED NOT NULL,
+                   `seat` TINYINT UNSIGNED NOT NULL,
                    `is_present` BOOLEAN NOT NULL,
                    PRIMARY KEY(`date`, `slot_no`, `student_id`),
                    FOREIGN KEY(`student_id`) REFERENCES `students`(`id`)

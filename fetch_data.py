@@ -23,6 +23,11 @@ for which data will change frequently.
 """
 
 
+def get_slots(cursor: Cursor) -> tuple[dict[str, datetime.datetime | int]]:
+    cursor.execute("""SELECT * FROM `slots` ORDER BY `no`""")
+    return tuple(cursor.fetchall())
+
+
 def get_attendance(
     cursor: Cursor, /, *,
     fmt: Literal["sql", "pandas"] = "sql",
@@ -32,6 +37,7 @@ def get_attendance(
     class_id: Optional[int] = None,
     course_code: Optional[str] = None,
     student_id: Optional[int] = None,
+    seat: Optional[int] = None,
     is_present: Optional[bool] = None
 ) -> pd.DataFrame | tuple[dict[str, int | str | bool], ...]:
     if fmt == "pandas":
@@ -41,7 +47,9 @@ def get_attendance(
                        `stream` AS `Stream`,
                        `year` AS `Year`,
                        `section` AS `Section`,
+                       `class_id` AS `ClassID`,
                        `room_no` AS `RoomNo`,
+                       `seat` AS `Seat`,
                        `course_code` AS `CourseCode`,
                        CONCAT(
                             `campus_id`,
@@ -49,7 +57,10 @@ def get_attendance(
                                  100), 2, '0'),
                             LPAD(`programme_id`, 3, '0'),
                             LPAD(`roll_no`, 3, '0')
-                       ) AS `RegNo`
+                       ) AS `RegNo`,
+                       `SSD`.`student_id` AS `ID`,
+                       `SSD`.`name` AS `Name`,
+                       `is_present` AS `Present`
                        FROM `attendance` `att`
                        JOIN `classes`
                        ON `class_id`=`classes`.`id`
@@ -57,39 +68,40 @@ def get_attendance(
                        ON `att`.`student_id`=`SSD`.`student_id`
                        JOIN `degrees`
                        ON `degrees`.`name`=`degree`""")
-        return pd.DataFrame(cursor.fetchall(), copy=False)
+        return pd.DataFrame(cursor.fetchall(), copy=False) \
+            .astype({"Date": "datetime64[s]"}, copy=False)
 
     if date:
         if slot_no:
             if section_id:
-                cursor.execute("""SELECT `course_code`, `class_id`
-                               `student_id`, `is_present`
+                cursor.execute("""SELECT `course_code`, `class_id`,
+                               `student_id`, `seat`, `is_present`
                                FROM `attendance` `att`
                                JOIN `section_students` `SS`
                                ON `att`.`student_id`=`SS`.`student_id`
-                               AND `date`=%s,
+                               AND `date`=%s
                                AND `slot_no`=%s
                                AND `SS`.`section_id`=%s""",
                                (date, slot_no, section_id))
             else:
-                cursor.execute("""SELECT `course_code`, `class_id`
-                               `student_id`, `is_present`
+                cursor.execute("""SELECT `course_code`, `class_id`,
+                               `student_id`, `seat`, `is_present`
                                FROM `attendance`
-                               WHERE `date`=%s,
+                               WHERE `date`=%s
                                AND `slot_no`=%s""", (date, slot_no))
         elif section_id:
-            cursor.execute("""SELECT `course_code`, `slot_no`
-                           `class_id`, `student_id`, `is_present`
+            cursor.execute("""SELECT `course_code`, `slot_no`,
+                           `class_id`, `student_id`, `seat`, `is_present`
                            FROM `attendance` `att`
                            JOIN `section_students` `SS`
                            ON `att`.`student_id`=`SS`.`student_id`
-                           AND `date`=%s,
+                           AND `date`=%s
                            AND `SS`.`section_id`=%s""",
                            (date, section_id))
     elif slot_no:
         if section_id:
-            cursor.execute("""SELECT `date`, `course_code`, `class_id`
-                           `student_id`, `is_present`
+            cursor.execute("""SELECT `date`, `course_code`, `class_id`,
+                           `student_id`, `seat`, `is_present`
                            FROM `attendance` `att`
                            JOIN `section_students` `SS`
                            ON `att`.`student_id`=`SS`.`student_id`
@@ -98,13 +110,13 @@ def get_attendance(
                            (slot_no, section_id))
         else:
             cursor.execute("""SELECT `date`, `course_code`,
-                           `class_id`, `student_id`, `is_present`
+                           `class_id`, `student_id`, `seat`, `is_present`
                            FROM `attendance`
                            WHERE `slot_no`=%s""", (slot_no,))
     elif section_id:
         cursor.execute("""SELECT `date`, `slot_no`, `course_code`,
                        `class_id`, `course_code`,
-                       `student_id`, `is_present`
+                       `student_id`, `seat`, `is_present`
                        FROM `attendance` `att`
                        JOIN `section_students` `SS`
                        ON `att`.`student_id`=`SS`.`student_id`
@@ -119,6 +131,8 @@ def get_attendance(
         res = tuple(d for d in res if d.pop("class_id") == class_id)
     if student_id:
         res = tuple(d for d in res if d.pop("student_id") == student_id)
+    if seat:
+        res = tuple(d for d in res if d.pop("seat") == seat)
     if is_present is not None:
         res = tuple(d for d in res if d.pop("is_present") == is_present)
     return res
@@ -129,7 +143,6 @@ def get_invigilator(
     date: Optional[datetime.date] = None,
     slot_no: Optional[int] = None,
     section_id: Optional[int] = None,
-    course_code: Optional[str] = None,
     faculty_id: Optional[int] = None
 ) -> tuple[dict[str, int | str], ...]:
     if date:

@@ -162,17 +162,19 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                 data.SlotNo,
                 data.CourseCode,
                 data.ClassID,
-                False
+                data.Seat,
+                True
             ))
         add_att.add_attendances(db_connector, cursor, students)
 
     plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream", "Year",
                                  "Section", "ClassID", "RoomNo", "CourseCode",
-                                 "RegNo", "StudentID"])
+                                 "Seat", "RegNo", "StudentID"])
     to_types = {
         "SlotNo": "uint8",
         "Year": "uint16",
         "ClassID": "uint32",
+        "Seat": "uint8",
         "StudentID": "uint32"
     }
     for ds, grouped in schedules.groupby(["Date", "SlotNo"]):
@@ -200,7 +202,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     for i in range(occupy):
                         plan = pd.concat([plan, pd.DataFrame([[
                                 *ds, *prg_year, section.Section,
-                                hall.ID, hall.RoomNo, course_code, *students[i]
+                                hall.ID, hall.RoomNo, course_code,
+                                hall.Seat + i + 1, *students[i]
                             ]], columns=plan.columns)],
                             axis=0, ignore_index=True)
                     students = students[occupy:]

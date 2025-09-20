@@ -12,11 +12,184 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. -->
 
+
 {% extends "layout.html" %}
 
-{% block head %}
-    <meta name="description"
-          content="Attendance marking page.">
-{% endblock %}
+{% block title %}Attendance Sheet{% endblock %}
 
-{% block title %}Attendance{% endblock %}
+{% block head %}
+<meta name="description" content="A mobile-responsive attendance sheet.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    #content {padding: 0; margin: 0;}
+    .attendance-container {width: 100%; margin: 0; background-color: var(--input-bg-light); display: flex; flex-direction: column; flex-grow: 1;}
+    [data-theme="dark"] .attendance-container {background-color: var(--bg-dark);}
+    .attendance-header {text-align: center; padding: 1.5rem 1rem; border-bottom: 1px solid var(--input-border-light); flex-shrink: 0;}
+    [data-theme="dark"] .attendance-header {border-bottom-color: var(--input-border-dark);}
+    .attendance-header h1 {margin: 0; font-size: 1.5rem;}
+    .attendance-header p {margin: 0.5rem 0 0; font-size: 0.9rem;}
+    .attendance-main {overflow-x: auto; flex-grow: 1;}
+    .attendance-table {width: 100%; border-collapse: collapse;}
+    .attendance-table th, .attendance-table td {padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--input-border-light); white-space: nowrap;}
+    .attendance-table th:first-child, .attendance-table td:first-child {text-align: center;}
+    [data-theme="dark"] .attendance-table th, [data-theme="dark"] .attendance-table td {border-color: var(--input-border-dark);}
+    .attendance-table th {font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;}
+    .attendance-table tbody tr {cursor: pointer; transition: background-color 0.2s ease, opacity 0.2s ease;}
+    .attendance-table tbody tr:hover {background-color: var(--link-hover-bg);}
+    [data-theme="dark"] .attendance-table tbody tr:hover {background-color: var(--link-hover-bg-dark);}
+    .attendance-table tbody tr.absent {background-color: var(--link-hover-bg); font-weight: 500;}
+    [data-theme="dark"] .attendance-table tbody tr.absent {background-color: var(--link-hover-bg-dark);}
+    .attendance-table tbody tr.present {opacity: 0.6;}
+    .attendance-footer {padding: 1rem 1.5rem; border-top: 1px solid var(--input-border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; flex-shrink: 0;}
+    [data-theme="dark"] .attendance-footer {border-top-color: var(--input-border-dark);}
+    .summary {display: flex; gap: 1.5rem; font-size: 1rem; font-weight: 600;}
+    .actions {display: flex; gap: 0.75rem; flex-grow: 1; justify-content: flex-end;}
+    .action-button {background-color: var(--accent); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 0.375rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: var(--transition); white-space: nowrap;}
+    .action-button:hover {background-color: var(--accent-dark); transform: translateY(-2px); color: white;}
+    .secondary-button {background-color: #4a5568;}
+    [data-theme="dark"] .secondary-button {background-color: #718096;}
+    .secondary-button:hover {background-color: #2d3748 !important;}
+    @media print {
+        body, .attendance-container {background-color: #fff; color: #000;}
+        nav, footer {display: none;}
+        .attendance-container {box-shadow: none;}
+        .attendance-table tbody tr.present {opacity: 1;}
+        .attendance-table tbody tr.absent {background-color: #f0f0f0;}
+        .action-button {display: none;}
+    }
+    @media (max-width: 768px) {
+        .attendance-header {padding: 1rem;}
+        .attendance-header h1 {font-size: 1.25rem;}
+        .attendance-header p {font-size: 0.8rem;}
+        .attendance-table th, .attendance-table td {padding: 0.5rem 0.75rem; font-size: 0.85rem;}
+        .attendance-footer {flex-direction: column; align-items: stretch; gap: 1rem;}
+        .actions {justify-content: center;}
+        .action-button {flex-grow: 1; text-align: center;}
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="attendance-container">
+    <header class="attendance-header">
+        <h1>{{ school }}</h1>
+        <p><strong>Room No:</strong> {{ room_no }}&nbsp;&nbsp;&nbsp;<strong>Date:</strong> {{ date }}&nbsp;&nbsp;&nbsp;<strong>Slot:</strong> {{ slot_no }}</p>
+    </header>
+    <main class="attendance-main">
+        <form id="attendanceForm" method="post" action="/update">
+            <input type="hidden" name="date" value="{{ date }}">
+            <input type="hidden" name="room_no" value="{{ room_no }}">
+            <input type="hidden" name="slot_no" value="{{ slot_no }}">
+            <input type="hidden" id="absentField" name="absentees">
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>S. No</th>
+                        <th>Name</th>
+                        <th>Register No</th>
+                        <th>Course Code</th>
+                    </tr>
+                </thead>
+                <tbody id="attendance-body">
+                    {% for _, student in students %}
+                    <tr class="student-row {% if student.Present %}present{% else %}absent{% endif %}"
+                        data-regno="{{ student.RegNo }}"
+                        data-id="{{ student.ID }}">
+                        <td>{{ student.Seat }}</td>
+                        <td>{{ student.Name }}</td>
+                        <td>{{ student.RegNo }}</td>
+                        <td>{{ student.CourseCode }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <footer class="attendance-footer">
+                <div class="summary">
+                    <div>Present: <span id="present-count">0</span></div>
+                    <div>Absent: <span id="absent-count">0</span></div>
+                </div>
+                <div class="actions">
+                    <button id="downloadExcelBtn" type="button" class="action-button secondary-button">Download Excel</button>
+                    <button id="printBtn" type="button" class="action-button secondary-button">Print</button>
+                    {% if not view %}
+                        <button type="submit" class="action-button">Submit Attendance</button>
+                    {% endif %}
+                </div>
+            </footer>
+        </form>
+    </main>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const tableBody = document.getElementById("attendance-body");
+        const presentCountElem = document.getElementById("present-count");
+        const absentCountElem = document.getElementById("absent-count");
+        const downloadBtn = document.getElementById("downloadExcelBtn");
+        const printBtn = document.getElementById("printBtn");
+        const form = document.getElementById("attendanceForm");
+        const absentField = document.getElementById("absentField");
+        const totalStudents = tableBody.rows.length;
+        const updateCounts = () => {
+            const presentCount = tableBody.querySelectorAll(".present").length;
+            presentCountElem.textContent = presentCount;
+            absentCountElem.textContent = totalStudents - presentCount;
+        };
+        const isView = {{ "true" if view else "false" }};
+        if (!isView)
+            tableBody.addEventListener("click", (event) => {
+                const row = event.target.closest(".student-row");
+                if (row) {
+                    row.classList.toggle("present");
+                    row.classList.toggle("absent");
+                    updateCounts();
+                }
+            });
+        downloadBtn.addEventListener("click", () => {
+            const data = [["S. No", "Name", "Register No", "Course Code", "Present"]];
+            tableBody.querySelectorAll(".student-row").forEach(row => {
+                const rowData = Array.from(row.cells, cell => cell.textContent.trim());
+                rowData.push(row.classList.contains("present") ? "P" : "A");
+                data.push(rowData);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+            XLSX.writeFile(wb, `attendance_{{ date.replace("/", "_") }}_{{ slot_no }}.xlsx`);
+        });
+        printBtn.addEventListener("click", () => {
+            const table = document.querySelector(".attendance-table");
+            const headerRow = table.querySelector("thead tr");
+            const th = document.createElement("th");
+            const bodyRows = table.querySelectorAll("tbody tr");
+            th.textContent = "Present (P/A)";
+            th.style.textAlign = "center";
+            headerRow.appendChild(th);
+            bodyRows.forEach(row => {
+                const td = document.createElement("td");
+                td.textContent = row.classList.contains("present") ? "P" : "A";
+                td.style.textAlign = "center";
+                row.appendChild(td);
+            });
+            window.print();
+        });
+        window.onafterprint = () => {
+            const table = document.querySelector(".attendance-table");
+            const headerRow = table.querySelector("thead tr");
+            if (headerRow.lastChild.textContent === "Present (P/A)") {
+                headerRow.removeChild(headerRow.lastChild);
+            }
+            const bodyRows = table.querySelectorAll("tbody tr");
+            bodyRows.forEach(row => {
+                row.removeChild(row.lastChild);
+            });
+        };
+        form.addEventListener("submit", () => {
+            const absentees = Array.from(
+                tableBody.querySelectorAll(".student-row.absent"),
+                row => row.dataset.id
+            );
+            absentField.value = JSON.stringify(absentees);
+        });
+        updateCounts();
+    });
+</script>
+{% endblock %}

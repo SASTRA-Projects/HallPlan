@@ -15,6 +15,8 @@
 
 from Timetable.app import (about, check_login, login, logout,
                            nocache, page_not_found, sql)
+from Timetable.fetch_data import get_class
+from Timetable.show_data import get_building_id, get_school_id, get_schools
 from Timetable.typehints import Response
 from datetime import datetime
 from flask import Flask, redirect, render_template, request, url_for
@@ -25,6 +27,8 @@ import fetch_data
 import os
 import pandas as pd
 import secrets
+import string
+import update_data
 
 
 app = Flask(__name__)
@@ -63,10 +67,11 @@ def upload() -> str:
     return render_template("./upload.html")
 
 
-def _hallplan(plan: pd.DataFrame) -> None:
-    def to_fmt(date: datetime) -> str:
-        return date.strftime("%d/%m/%Y")
+def to_fmt(date: datetime) -> str:
+    return date.strftime("%d/%m/%Y")
 
+
+def _hallplan(plan: pd.DataFrame) -> None:
     for date_slot, data in plan.groupby(["Date", "SlotNo"]):
         date, slot_no = date_slot
         section_groups = data.groupby(["Year", "Degree", "Stream", "Section"])
@@ -138,27 +143,94 @@ def hallplan() -> str:
 
 
 @app.route("/attendance", methods=["GET", "POST"])
-def attendance() -> str:
-    # TODO: Display based on date, slot & room_no
-    return render_template("./attendance.html")
+def attendance() -> Response | str:
+    user, _ = sql.get_user(sql.cursor)
+    if request.method == "GET":
+        slots = fetch_data.get_slots(sql.cursor)
+        slot_min = slots[0]["no"]
+        slot_max = slots[-1]["no"]
+        schools = tuple(school["name"] for school in get_schools(sql.cursor))
+        return render_template("hall_details.html", slot_min=slot_min,
+                               slot_max=slot_max, schools=schools, user=user)
+
+    school = request.form["school"]
+    school_id = get_school_id(sql.cursor, school=school)
+    building_id = get_building_id(sql.cursor, school_id=school_id)
+    slot_no = int(request.form["slot_no"])
+    room_no = int(request.form["room_no"])
+    date = request.form.get("date")
+    if not date:
+        date = datetime.today()
+    else:
+        date = datetime.strptime(date, "%Y-%m-%d")
+    cls = get_class(sql.cursor, building_id=building_id, room_no=room_no)
+    cls_id = cls["id"]
+    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
+    students = students.query(
+        "Date.dt.date == @date.date() and ClassID == @cls_id "
+        "and SlotNo == @slot_no"
+    )
+    if students.empty:
+        return render_template(
+            "./failed.html",
+            reason=f"No Exam is going on in {school} in {room_no} "
+                   f"at slot {slot_no} on {to_fmt(date)}"
+        )
+    view = True
+    if request.form.get("action") == "proceed":
+        students.Present = True
+        view = False
+
+    return render_template(
+        "./attendance.html", view=view, date=to_fmt(date), slot_no=slot_no,
+        room_no=room_no, school=school, students=students.iterrows()
+    )
+
+
+@app.route("/update", methods=["POST"])
+def update() -> Response:
+    date = datetime.strptime(request.form["date"], "%d/%m/%Y").date()
+    slot_no = int(request.form["slot_no"])
+    absentees = eval(request.form["absentees"])
+    update_data.update_attendances(sql.db_connector, sql.cursor, [
+        (False, date, slot_no, absentee)
+        for absentee in absentees
+    ])
+    return redirect(url_for("index"))
 
 
 @app.route("/add", methods=["GET", "POST"])
 def add_user() -> Response | str:
     def add(usr: str, pwd: str) -> None | str:
-        if sql.cursor:
-            try:
-                sql.cursor.execute("""CREATE USER IF NOT EXISTS %s@'%%' IDENTIFIED BY %s""",
-                                   (usr, pwd))
-                sql.cursor.execute("""GRANT SELECT, UPDATE ON `SASTRA`.`attendance` TO %s@'%%'""", (usr,))
-                sql.cursor.execute("""FLUSH PRIVILEGES""")
-            except Exception:
-                return render_template("./failed.html", reason="User already present")
+        try:
+            sql.cursor.execute("""CREATE USER IF NOT EXISTS "
+                               "%s@'%%' IDENTIFIED BY %s""", (usr, pwd))
+            sql.cursor.execute("""GRANT UPDATE ON `SASTRA`.`attendance` "
+                               "TO %s@'%%'""", (usr,))
+            sql.cursor.execute("""GRANT SELECT ON `SASTRA`.* TO %s@'%%'""",
+                               (usr,))
+            sql.cursor.execute("""FLUSH PRIVILEGES""")
+        except Exception:
+            return render_template("./failed.html",
+                                   reason="User already present")
+        return None
+
+    def generate_pwd(length: int = 12) -> str:
+        alphabet = string.ascii_letters + string.digits + string.punctuation
+        punctuations = set(string.punctuation)
+
+        while True:
+            pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+            if any(p.islower() for p in pwd) \
+               and any(p.isupper() for p in pwd) \
+               and any(p.isdigit() for p in pwd) \
+               and any(p in punctuations for p in pwd):
+                return pwd
 
     if sql.cursor:
         if request.method == "GET":
-            return render_template("./login.html", role="Exam",
-                                   user="User", auth="/add")
+            return render_template("./login.html", role="Exam", user="User",
+                                   auth="/add", pwd=generate_pwd())
         if (usr := request.form.get("user")) \
            and (pwd := request.form.get("password")):
             add(usr, pwd)
@@ -169,20 +241,24 @@ def add_user() -> Response | str:
 
 @app.route("/remove", methods=["GET", "POST"])
 def remove_user() -> Response | str:
-    def remove(usr: str, pwd: str) -> None | str:
-        if sql.cursor:
-            try:
-                sql.cursor.execute("""DROP USER IF EXISTS `%s`@'%%'""", (usr,))
-            except Exception as e:
-                return render_template("./failed.html", reason="Incorrect user name")
- 
+    def remove(usr: str) -> None | str:
+        try:
+            sql.cursor.execute("""DROP USER IF EXISTS %s@'%%'""", (usr,))
+        except Exception:
+            return render_template(
+                "./failed.html", reason="Incorrect user name or access denied"
+            )
+        return None
+
     if sql.cursor:
         if request.method == "GET":
             return render_template("./login.html", role="Exam",
-                                   user="User", auth="/remove")
-        if (usr := request.form.get("user")) \
-           and (pwd := request.form.get("password")):
-            remove(usr, pwd)
+                                   user="User", auth="/remove",
+                                   pwd_less=True)
+        if usr := request.form.get("user"):
+            if result := remove(usr):
+                return result
+
         return redirect(url_for("index"))
     return render_template("./failed.html",
                            reason="Not logged in properly!")

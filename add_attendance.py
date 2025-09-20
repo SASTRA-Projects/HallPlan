@@ -40,13 +40,14 @@ def add_attendance(db_connector: Connection,
                    slot_no: Optional[int] = None,
                    course_code: Optional[str] = None,
                    class_id: Optional[int] = None,
+                   seat: Optional[int] = None,
                    is_present: Optional[bool]) -> None:
     cursor.execute("""INSERT INTO `attendance`
                    (`student_id`, `date`, `slot_no`,
-                   `course_code`, `class_id`, `is_present`)
-                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                   `course_code`, `class_id`, `seat`, `is_present`)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
                    (student_id, date, slot_no,
-                    course_code, class_id, is_present))
+                    course_code, class_id, seat, is_present))
     db_connector.commit()
 
 
@@ -55,8 +56,8 @@ def add_attendances(db_connector: Connection,
                     students: list[tuple[bool | int | str]]) -> None:
     cursor.executemany("""INSERT INTO `attendance`
                        (`student_id`, `date`, `slot_no`,
-                       `course_code`, `class_id`, `is_present`)
-                       VALUES (%s, %s, %s, %s, %s, %s)""", students)
+                       `course_code`, `class_id`, `seat`, `is_present`)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""", students)
     db_connector.commit()
 
 
