@@ -55,7 +55,10 @@ app.route("/login", methods=["GET", "POST"])(nocache(login))
 @app.route("/home")
 @app.route("/")
 def index() -> str:
-    return render_template("./index.html")
+    if not sql.cursor:
+        raise ValueError("Not logged in properly!")
+    user, _ = sql.get_user(sql.cursor)
+    return render_template("./index.html", user=user)
 
 
 app.route("/about")(about)
@@ -144,6 +147,9 @@ def hallplan() -> str:
 
 @app.route("/attendance", methods=["GET", "POST"])
 def attendance() -> Response | str:
+    if not sql.cursor:
+        raise ValueError("Not logged in properly!")
+
     user, _ = sql.get_user(sql.cursor)
     if request.method == "GET":
         slots = fetch_data.get_slots(sql.cursor)
@@ -189,9 +195,14 @@ def attendance() -> Response | str:
 
 @app.route("/update", methods=["POST"])
 def update() -> Response:
+    if not sql.db_connector or not sql.cursor:
+        raise ValueError("Not logged in properly!")
+
     date = datetime.strptime(request.form["date"], "%d/%m/%Y").date()
     slot_no = int(request.form["slot_no"])
     absentees = eval(request.form["absentees"])
+
+    assert all(isinstance(absentee, int | str) for absentee in absentees)
     update_data.update_attendances(sql.db_connector, sql.cursor, [
         (False, date, slot_no, absentee)
         for absentee in absentees
@@ -203,14 +214,20 @@ def update() -> Response:
 def add_user() -> Response | str:
     def add(usr: str, pwd: str) -> None | str:
         try:
-            sql.cursor.execute("""CREATE USER IF NOT EXISTS "
-                               "%s@'%%' IDENTIFIED BY %s""", (usr, pwd))
-            sql.cursor.execute("""GRANT UPDATE ON `SASTRA`.`attendance` "
-                               "TO %s@'%%'""", (usr,))
+            if not sql.cursor:
+                raise ValueError
+
+            sql.cursor.execute("""CREATE USER %s@'%%' IDENTIFIED BY %s""",
+                               (usr, pwd))
+            sql.cursor.execute("""GRANT UPDATE ON `SASTRA`.`attendance` """
+                               """TO %s@'%%'""", (usr,))
             sql.cursor.execute("""GRANT SELECT ON `SASTRA`.* TO %s@'%%'""",
                                (usr,))
             sql.cursor.execute("""FLUSH PRIVILEGES""")
-        except Exception:
+
+            print(pwd)
+        except Exception as e:
+            print(pwd, 1, e)
             return render_template("./failed.html",
                                    reason="User already present")
         return None
@@ -232,8 +249,11 @@ def add_user() -> Response | str:
             return render_template("./login.html", role="Exam", user="User",
                                    auth="/add", pwd=generate_pwd())
         if (usr := request.form.get("user")) \
-           and (pwd := request.form.get("password")):
-            add(usr, pwd)
+           and (pwd := request.form.get("password")) \
+           and (failure := add(usr, pwd)):
+            return failure
+
+        print(usr, request.form.get("password"))
         return redirect(url_for("index"))
     return render_template("./failed.html",
                            reason="Not logged in properly!")
@@ -243,7 +263,8 @@ def add_user() -> Response | str:
 def remove_user() -> Response | str:
     def remove(usr: str) -> None | str:
         try:
-            sql.cursor.execute("""DROP USER IF EXISTS %s@'%%'""", (usr,))
+            if sql.cursor:
+                sql.cursor.execute("""DROP USER IF EXISTS %s@'%%'""", (usr,))
         except Exception:
             return render_template(
                 "./failed.html", reason="Incorrect user name or access denied"
@@ -254,7 +275,7 @@ def remove_user() -> Response | str:
         if request.method == "GET":
             return render_template("./login.html", role="Exam",
                                    user="User", auth="/remove",
-                                   pwd_less=True)
+                                   pwd_less=True, login="Remove")
         if usr := request.form.get("user"):
             if result := remove(usr):
                 return result

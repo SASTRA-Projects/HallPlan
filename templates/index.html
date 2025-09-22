@@ -80,17 +80,19 @@ limitations under the License. -->
             <button type="submit" class="button">Upload Schedule</button>
         </form>
     </div>
-    <div class="actions-container">
-        <a href="/add" class="action-button add" title="Add User">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </a>
-        <a href="/remove" class="action-button delete" title="Remove User">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </a>
-    </div>
+    {% if user == "avnadmin" %}
+        <div class="actions-container">
+            <a href="/add" class="action-button add" title="Add User">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </a>
+            <a href="/remove" class="action-button delete" title="Remove User">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </a>
+        </div>
+    {% endif %}
 {% endblock %}

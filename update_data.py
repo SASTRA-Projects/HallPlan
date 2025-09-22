@@ -36,9 +36,11 @@ def update_attendance(db_connector: Connection,
     db_connector.commit()
 
 
-def update_attendances(db_connector: Connection,
-                       cursor: Cursor,
-                       students: list[tuple[bool | int | str]]) -> None:
+def update_attendances(
+    db_connector: Connection,
+    cursor: Cursor,
+    students: list[tuple[bool, datetime.date, int, str]]
+) -> None:
     cursor.executemany("""UPDATE `attendance`
                        SET `is_present`=%s
                        WHERE `date`=%s
