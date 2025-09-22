@@ -169,9 +169,16 @@ def attendance() -> Response | str:
         date = datetime.today()
     else:
         date = datetime.strptime(date, "%Y-%m-%d")
+    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
     cls = get_class(sql.cursor, building_id=building_id, room_no=room_no)
+    if not cls:
+        return render_template(
+            "./failed.html",
+            reason=f"Invalid Room No. {room_no} for {school}"
+        )
     cls_id = cls["id"]
     students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
+    assert isinstance(students, pd.DataFrame)
     students = students.query(
         "Date.dt.date == @date.date() and ClassID == @cls_id "
         "and SlotNo == @slot_no"
