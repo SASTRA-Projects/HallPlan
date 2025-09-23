@@ -191,7 +191,6 @@ def attendance() -> Response | str:
         )
     view = True
     if request.form.get("action") == "proceed":
-        students.Present = True
         view = False
 
     return render_template(
