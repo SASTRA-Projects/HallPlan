@@ -24,9 +24,6 @@ limitations under the License. -->
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.6rem;
-            margin-top: 1.5rem;
-            margin-bottom: 1.5rem;
         }
         .actions-container {
             position: fixed;
@@ -76,11 +73,14 @@ limitations under the License. -->
         <form action="/hallplan">
             <button type="submit" class="button">Hall Plan</button>
         </form>
-        <form action="/upload">
-            <button type="submit" class="button">Upload Schedule</button>
-        </form>
-    </div>
     {% if user == "avnadmin" %}
+            <form action="/upload">
+                <button type="submit" class="button">Upload Schedule</button>
+            </form>
+            <form action="/upload/hallplan">
+                <button type="submit" class="button">Upload Hall Plan</button>
+            </form>
+        </div>
         <div class="actions-container">
             <a href="/add" class="action-button add" title="Add User">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -93,6 +93,8 @@ limitations under the License. -->
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
             </a>
+        </div>
+    {% else %}
         </div>
     {% endif %}
 {% endblock %}

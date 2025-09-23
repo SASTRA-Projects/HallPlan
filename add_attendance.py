@@ -22,10 +22,10 @@ Adds the data in the attendance, slots and invigilator tables.
 
 
 def add_slot(db_connector: Connection,
-              cursor: Cursor, /, *,
-              no: Optional[int] = None,
-              start_time: Optional[datetime.datetime] = None,
-              end_time: Optional[datetime.datetime] = None) -> None:
+             cursor: Cursor, /, *,
+             no: Optional[int] = None,
+             start_time: Optional[datetime.datetime] = None,
+             end_time: Optional[datetime.datetime] = None) -> None:
     cursor.execute("""INSERT INTO `slots`
                    (`no`, `start_time`, `end_time`)
                    VALUES (%s, %s, %s)""",

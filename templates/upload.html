@@ -121,22 +121,31 @@ limitations under the License. -->
 {% block content %}
 <h1>Upload Excel Sheets</h1>
 <div class="card">
-<form action="/hallplan" method="post" enctype="multipart/form-data">
-    <div class="field">
-    <label for="slots">🗓 Slots <span class="required">*</span></label>
-    <input type="file" id="slots" name="slots" required>
-    <p class="note">Upload slot timings in excel format.</p>
-    </div>
-    <div class="field">
-    <label for="schedules">📘 Schedules <span class="required">*</span></label>
-    <input type="file" id="schedules" name="schedules" required>
-    <p class="note">Upload the exam timetable.</p>
-    </div>
-    <div class="field">
-    <label for="classrooms">🏫 Classrooms <span class="required">*</span></label>
-    <input type="file" id="classrooms" name="classrooms" required>
-    <p class="note">Upload available classrooms with no. of seats.</p>
-    </div>
+    {% if not hallplan %}
+    <form action="/hallplan" method="post" enctype="multipart/form-data">
+        <div class="field">
+            <label for="slots">🗓 Slots <span class="required">*</span></label>
+            <input type="file" id="slots" name="slots" accept=".xlsx,.xls,.csv" required>
+            <p class="note">Upload slot timings in excel format.</p>
+        </div>
+        <div class="field">
+            <label for="schedules">📘 Schedules <span class="required">*</span></label>
+            <input type="file" id="schedules" name="schedules" accept=".xlsx,.xls,.csv" required>
+            <p class="note">Upload the exam timetable.</p>
+        </div>
+        <div class="field">
+            <label for="classrooms">🏫 Classrooms <span class="required">*</span></label>
+            <input type="file" id="classrooms" name="classrooms" accept=".xlsx,.xls,.csv" required>
+            <p class="note">Upload available classrooms with no. of seats.</p>
+        </div>
+    {% else %}
+    <form action="{{ action }}" method="post">
+        <div class="field">
+            <label for="plan">👩🏻 Plan <span class="required">*</span></label>
+            <input type="file" id="plan" name="plan" accept=".xlsx,.xls,.csv" required>
+            <p class="note">Upload the Hall Plan</p>
+        </div>
+    {% endif %}
     <button type="submit" class="upload">Upload & Process</button>
     {% if error_message %}
         <div class="error message">{{ error_message }}</div>

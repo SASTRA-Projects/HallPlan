@@ -21,7 +21,7 @@ from Timetable.typehints import Response
 from datetime import datetime
 from flask import Flask, redirect, render_template, request, url_for
 from generate_hallplan import (generate_hallplan, process_hall,
-                               process_schedule, process_slot)
+                               process_schedule, process_slot, put_attendance)
 from jinja2 import FileSystemLoader
 import fetch_data
 import os
@@ -68,6 +68,40 @@ app.route("/about")(about)
 def upload() -> str:
     table.clear()
     return render_template("./upload.html")
+
+
+@app.route("/upload/hallplan", methods=["GET", "POST"])
+def upload_hallplan() -> Response | str:
+    if request.method == "GET":
+        return render_template("./upload.html", action="/upload/hallplan",
+                               hallplan=True)
+
+    table.clear()
+    if not sql.db_connector or not sql.cursor:
+        return render_template("./failed.html",
+                               reason="Not logged in properly!")
+
+    if plan_sheet := request.form.get("plan"):
+        headers = [
+            "StudentID",
+            "Date",
+            "SlotNo",
+            "CourseCode",
+            "ClassID",
+            "Seat"
+        ]
+        plan = pd.read_excel(plan_sheet, sheet_name="plan",
+                             parse_dates=["Date"],
+                             date_format="%d/%m/%Y",
+                             names=headers,
+                             engine="openpyxl")
+        put_attendance(sql.db_connector, sql.cursor, plan=plan)
+
+    else:
+        return render_template("./upload.html", action="/upload/hallplan",
+                               hallplan=True,
+                               error_message="No plan uploaded!")
+    return redirect(url_for("index"))
 
 
 def to_fmt(date: datetime) -> str:

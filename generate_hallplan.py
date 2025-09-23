@@ -150,23 +150,28 @@ def process_hall(cursor: Cursor, /,
     return halls
 
 
+def put_attendance(
+    db_connector: Connection,
+    cursor: Cursor,
+    plan: pd.DataFrame
+) -> None:
+    students = []
+    for _, data in plan.iterrows():
+        students.append((
+            data.StudentID,
+            data.Date,
+            data.SlotNo,
+            data.CourseCode,
+            data.ClassID,
+            data.Seat,
+            True
+        ))
+    add_att.add_attendances(db_connector, cursor, students)
+
+
 def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                       schedules: pd.DataFrame = pd.DataFrame(),
                       halls: pd.DataFrame = pd.DataFrame()) -> pd.DataFrame:
-    def put_attendance(plan: pd.DataFrame):
-        students = []
-        for _, data in plan.iterrows():
-            students.append((
-                data.StudentID,
-                data.Date,
-                data.SlotNo,
-                data.CourseCode,
-                data.ClassID,
-                data.Seat,
-                True
-            ))
-        add_att.add_attendances(db_connector, cursor, students)
-
     plan = pd.DataFrame(columns=["Date", "SlotNo", "Degree", "Stream", "Year",
                                  "Section", "ClassID", "RoomNo", "CourseCode",
                                  "Seat", "RegNo", "StudentID"])
@@ -215,7 +220,7 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
     plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
     plan = plan.astype(to_types, copy=False)
     try:
-        put_attendance(plan)
+        put_attendance(db_connector, cursor, plan)
     except pymysql.err.IntegrityError as exception:
         print(exception)
         raise
