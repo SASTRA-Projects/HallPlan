@@ -23,6 +23,7 @@ from flask import Flask, redirect, render_template, request, url_for
 from generate_hallplan import (generate_hallplan, process_hall,
                                process_schedule, process_slot, put_attendance)
 from jinja2 import FileSystemLoader
+import ast
 import fetch_data
 import os
 import pandas as pd
@@ -242,7 +243,7 @@ def update() -> Response:
 
     date = datetime.strptime(request.form["date"], "%d/%m/%Y").date()
     slot_no = int(request.form["slot_no"])
-    absentees = eval(request.form["absentees"])
+    absentees = ast.literal_eval(request.form["absentees"])
 
     assert all(isinstance(absentee, int | str) for absentee in absentees)
     update_data.update_attendances(sql.db_connector, sql.cursor, [
@@ -266,10 +267,7 @@ def add_user() -> Response | str:
             sql.cursor.execute("""GRANT SELECT ON `SASTRA`.* TO %s@'%%'""",
                                (usr,))
             sql.cursor.execute("""FLUSH PRIVILEGES""")
-
-            print(pwd)
         except Exception as e:
-            print(pwd, 1, e)
             return render_template("./failed.html",
                                    reason="User already present")
         return None
@@ -294,8 +292,6 @@ def add_user() -> Response | str:
            and (pwd := request.form.get("password")) \
            and (failure := add(usr, pwd)):
             return failure
-
-        print(usr, request.form.get("password"))
         return redirect(url_for("index"))
     return render_template("./failed.html",
                            reason="Not logged in properly!")
