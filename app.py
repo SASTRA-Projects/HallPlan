@@ -81,7 +81,9 @@ def upload_hallplan() -> Response | str:
         return render_template("./failed.html",
                                reason="Not logged in properly!")
 
-    if plan_sheet := request.form.get("plan"):
+    __slots = request.files["slots"]
+    process_slot(sql.db_connector, sql.cursor, __slots)
+    if plan_sheet := request.files.get("plan"):
         headers = [
             "StudentID",
             "Date",

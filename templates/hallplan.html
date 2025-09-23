@@ -19,7 +19,11 @@ limitations under the License. -->
 
 {% block head %}
 <meta name="description" content="Display and filter the examination hall plan.">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script 
+  src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
+  integrity="sha512-qwZMiODk3fImSUTRzIKpBCXc2a/JoV2iLhGPM2u4FvFChQhEJTRI_eIsoPPOlVayA3k3zLhB2uProwW2gD+g_w==" 
+  crossorigin="anonymous">
+</script>
 <style>
     .hallplan-container {
         width: 100%;
@@ -137,6 +141,7 @@ limitations under the License. -->
     @media print {
         body { padding: 1rem; background-color: #fff; color: #000; }
         nav, footer, .filter-form, .page-header .action-button { display: none; }
+        .hall-plan-table th, .hall-plan-table td { border: 1px solid #000; }
         .hallplan-container { padding: 0; }
     }
 </style>
