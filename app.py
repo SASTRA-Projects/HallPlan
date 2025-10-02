@@ -267,7 +267,7 @@ def add_user() -> Response | str:
             sql.cursor.execute("""GRANT SELECT ON `SASTRA`.* TO %s@'%%'""",
                                (usr,))
             sql.cursor.execute("""FLUSH PRIVILEGES""")
-        except Exception as e:
+        except Exception:
             return render_template("./failed.html",
                                    reason="User already present")
         return None
