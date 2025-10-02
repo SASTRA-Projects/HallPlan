@@ -1,6 +1,8 @@
 # SASTRA Hall Plan Generation
 [![CodeQL Advanced](https://github.com/SASTRA-Projects/SASTRA-Timetable/actions/workflows/codeql.yml/badge.svg)](https://github.com/SASTRA-Projects/HallPlan/actions/workflows/codeql.yml)
 
+[![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Roboto&weight=550&size=48&pause=800&color=32B5F7&center=true&width=750&height=72&lines=Examination+Hall+Plan+Generator)](https://git.io/typing-svg)
+
 ## **📘 Project Overview**
 
 The **SASTRA Hall Plan Generation System** automates the creation of exam hall plans and seating arrangements at [SASTRA DEEMED TO BE UNIVERSITY](https://www.sastra.edu), building on top of [SASTRA Timetable Generation](https://github.com/SASTRA-Projects/Timetable) project to reduce manual effort, minimize errors, and ensure fairness.
