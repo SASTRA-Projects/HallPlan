@@ -243,7 +243,14 @@ def update() -> Response:
 
     date = datetime.strptime(request.form["date"], "%d/%m/%Y").date()
     slot_no = int(request.form["slot_no"])
+    presentees = ast.literal_eval(request.form["presentees"])
     absentees = ast.literal_eval(request.form["absentees"])
+
+    assert all(isinstance(presentee, int | str) for presentee in presentees)
+    update_data.update_attendances(sql.db_connector, sql.cursor, [
+        (True, date, slot_no, presentee)
+        for presentee in presentees
+    ])
 
     assert all(isinstance(absentee, int | str) for absentee in absentees)
     update_data.update_attendances(sql.db_connector, sql.cursor, [

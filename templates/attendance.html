@@ -83,6 +83,7 @@ limitations under the License. -->
             <input type="hidden" name="date" value="{{ date }}">
             <input type="hidden" name="room_no" value="{{ room_no }}">
             <input type="hidden" name="slot_no" value="{{ slot_no }}">
+            <input type="hidden" id="presentField" name="presentees">
             <input type="hidden" id="absentField" name="absentees">
             <table class="attendance-table">
                 <thead>
@@ -186,6 +187,13 @@ limitations under the License. -->
                 row.removeChild(row.lastChild);
             });
         };
+        form.addEventListener("submit", () => {
+            const presentees = Array.from(
+                tableBody.querySelectorAll(".student-row.present"),
+                row => row.dataset.id
+            );
+            presentField.value = JSON.stringify(presentees);
+        });
         form.addEventListener("submit", () => {
             const absentees = Array.from(
                 tableBody.querySelectorAll(".student-row.absent"),
