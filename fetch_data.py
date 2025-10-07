@@ -68,8 +68,12 @@ def get_attendance(
                        ON `att`.`student_id`=`SSD`.`student_id`
                        JOIN `degrees`
                        ON `degrees`.`name`=`degree`""")
-        return pd.DataFrame(cursor.fetchall(), copy=False) \
+        attendance = pd.DataFrame(cursor.fetchall(), copy=False) \
             .astype({"Date": "datetime64[s]"}, copy=False)
+        attendance["Stream"] = attendance.apply(
+            lambda r: r.Stream if r.Stream else "NULL", axis=1
+        )
+        return attendance
 
     if date:
         if slot_no:

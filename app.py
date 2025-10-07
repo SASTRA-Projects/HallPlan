@@ -15,7 +15,7 @@
 
 from Timetable.app import (about, check_login, login, logout,
                            nocache, page_not_found, sql)
-from Timetable.fetch_data import get_class
+from Timetable.fetch_data import get_classes
 from Timetable.show_data import get_building_id, get_school_id, get_schools
 from Timetable.typehints import Response
 from datetime import datetime
@@ -200,26 +200,40 @@ def attendance() -> Response | str:
     school_id = get_school_id(sql.cursor, school=school)
     building_id = get_building_id(sql.cursor, school_id=school_id)
     slot_no = int(request.form["slot_no"])
-    room_no = int(request.form["room_no"])
+    if room_no := request.form.get("room_no"):
+        room_no = int(room_no)
+    else:
+        room_no = None
+        _section = request.form["section"]
+
     date = request.form.get("date")
     if not date:
         date = datetime.today()
     else:
         date = datetime.strptime(date, "%Y-%m-%d")
     students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
-    cls = get_class(sql.cursor, building_id=building_id, room_no=room_no)
+    cls = get_classes(sql.cursor, building_id=building_id[0], room_no=room_no)
     if not cls:
         return render_template(
             "./failed.html",
             reason=f"Invalid Room No. {room_no} for {school}"
         )
-    cls_id = cls["id"]
+    cls_id = cls[0]["id"]
     students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
     assert isinstance(students, pd.DataFrame)
     students = students.query(
         "Date.dt.date == @date.date() and ClassID == @cls_id "
         "and SlotNo == @slot_no"
     )
+    if not room_no:
+        year, degree, *stream, section = _section.split()
+        year = int(year)
+        degree = degree.title()
+        section = section.upper()
+        stream = "".join(stream) if stream else "NULL"
+        students = students.query("Year == @year and Degree == @degree "
+                                  "and Stream == @stream")
+
     if students.empty:
         return render_template(
             "./failed.html",

@@ -93,6 +93,7 @@ def process_schedule(cursor: Cursor, /,
 
     def get_students(section):
         degree, stream = section.Degree, section.Stream
+        stream = stream if stream else "NULL"
         if not deg_stream.get((degree, stream)):
             programme_id = show_data.get_programme_id(cursor, degree=degree,
                                                       stream=stream)
