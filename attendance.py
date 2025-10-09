@@ -76,6 +76,8 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                                              `seat`, `is_present`
     - `student_id`, `date`, `course_code` \u2192 `slot_no`, `seat`,
                                                  `course_code`, `is_present`
+    - `date`, `slot_no`, `class_id` \u2192 `seat`, `student_id`,
+                                           `course_code`, `is_present`
     """
     cursor.execute("""CREATE TABLE IF NOT EXISTS `attendance` (
                    `student_id` INT UNSIGNED NOT NULL,
@@ -91,7 +93,8 @@ def create_hallplan(db_connector: Connection, cursor: Cursor) -> None:
                    FOREIGN KEY(`slot_no`) REFERENCES `slots`(`no`)
                    ON UPDATE CASCADE ON DELETE RESTRICT,
                    FOREIGN KEY(`class_id`) REFERENCES `classes`(`id`)
-                   ON UPDATE CASCADE ON DELETE RESTRICT
+                   ON UPDATE CASCADE ON DELETE RESTRICT,
+                   UNIQUE(`date`, `slot_no`, `class_id`, `seat`)
     )""")
     """
     Functional Dependencies

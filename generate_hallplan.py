@@ -205,6 +205,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     cap = hall.Capacity
                     half = cap // 2
                     occupy = min(no_of_students, abs(half - hall.Seat))
+
+                    assert cap, "Insufficient no. of seats!"
                     for i in range(occupy):
                         plan = pd.concat([plan, pd.DataFrame([[
                                 *ds, *prg_year, section.Section,
@@ -214,8 +216,11 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                             axis=0, ignore_index=True)
                     students = students[occupy:]
                     no_of_students = len(students)
-                    hall.Seat += occupy
-                    if hall.Seat in (half, cap):
+                    seat = hall.Seat + occupy
+
+                    _halls.at[hall_idx, "Capacity"] = cap - seat
+                    _halls.at[hall_idx, "Seat"] = seat
+                    if seat in (half, cap):
                         hall_idx = (hall_idx + 1) % n
 
     plan["Date"] = pd.to_datetime(plan["Date"], format="%d/%m/%Y")
