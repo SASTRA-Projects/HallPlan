@@ -107,6 +107,17 @@ def upload_hallplan() -> Response | str:
     return redirect(url_for("index"))
 
 
+@app.route("/download", methods=["GET", "POST"])
+def download() -> str:
+    if request.method == "GET":
+        return render_template("download.html")
+
+    if not sql.cursor:
+        return render_template("./failed.html",
+                               reason="Not logged in properly!")
+    return render_template("print.html")
+
+
 def to_fmt(date: datetime) -> str:
     return date.strftime("%d/%m/%Y")
 
