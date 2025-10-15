@@ -73,15 +73,15 @@ limitations under the License. -->
         <form action="/hallplan">
             <button type="submit" class="button">Hall Plan</button>
         </form>
+        <form action="/download">
+            <button type="submit" class="button">Download Hall Plan</button>
+        </form>
     {% if user == "avnadmin" %}
             <form action="/upload">
                 <button type="submit" class="button">Upload Schedule</button>
             </form>
             <form action="/upload/hallplan">
                 <button type="submit" class="button">Upload Hall Plan</button>
-            </form>
-            <form action="/download">
-                <button type="submit" class="button">Download Hall Plan</button>
             </form>
         </div>
         <div class="actions-container">

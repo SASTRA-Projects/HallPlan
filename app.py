@@ -109,13 +109,75 @@ def upload_hallplan() -> Response | str:
 
 @app.route("/download", methods=["GET", "POST"])
 def download() -> str:
+    user, _ = sql.get_user(sql.cursor)
     if request.method == "GET":
-        return render_template("download.html")
+        slots = fetch_data.get_slots(sql.cursor)
+        slot_min = slots[0]["no"]
+        slot_max = slots[-1]["no"]
+        schools = tuple(school["name"] for school in get_schools(sql.cursor))
+        return render_template("hall_details.html", action="/download",
+                               slot_min=slot_min, slot_max=slot_max,
+                               schools=schools, proceed="Download", user=user)
 
     if not sql.cursor:
         return render_template("./failed.html",
                                reason="Not logged in properly!")
-    return render_template("print.html")
+
+    school = request.form["school"]
+    school_id = get_school_id(sql.cursor, school=school)
+    building_id = get_building_id(sql.cursor, school_id=school_id)
+    slot_no = int(request.form["slot_no"])
+    if room_no := request.form.get("room_no"):
+        room_no = int(room_no)
+    else:
+        room_no = None
+        _section = request.form["section"]
+
+    date = request.form.get("date")
+    if not date:
+        date = datetime.today()
+    else:
+        date = datetime.strptime(date, "%Y-%m-%d")
+    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
+    cls = get_classes(sql.cursor, building_id=building_id[0], room_no=room_no)
+    if not cls:
+        return render_template(
+            "./failed.html",
+            reason=f"Invalid Room No. {room_no} for {school}"
+        )
+    cls_id = cls[0]["id"]
+    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
+    assert isinstance(students, pd.DataFrame)
+    students = students.query(
+        "Date.dt.date == @date.date() and ClassID == @cls_id "
+        "and SlotNo == @slot_no"
+    )
+    if not room_no:
+        year, degree, *stream, section = _section.split()
+        _year = int(year)
+        degree = degree.title()
+        section = section.upper()
+        _stream = "".join(stream) if stream else "NULL"
+        students = students.query("Year == @_year and Degree == @degree "
+                                  "and Stream == @_stream")
+
+    if students.empty:
+        return render_template(
+            "./failed.html",
+            reason=f"No Exam is going on in {school} in {room_no} "
+                   f"at slot {slot_no} on {to_fmt(date)}"
+        )
+
+    students_list = students.sort_values(by="Seat").to_dict('records')
+    split_index = -(-len(students_list) // 2)
+
+    students_col1 = students_list[:split_index]
+    students_col2 = students_list[split_index:]
+
+    return render_template("print.html", date=to_fmt(date), slot_no=slot_no,
+                           room_no=room_no, school=school,
+                           students_col1=students_col1,
+                           students_col2=students_col2)
 
 
 def to_fmt(date: datetime) -> str:

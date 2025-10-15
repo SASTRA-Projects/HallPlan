@@ -201,7 +201,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                 course_code = section.CourseCode
                 no_of_students = len(students)
                 while no_of_students:
-                    hall = _halls.iloc[hall_idx]
+                    _idx = _halls.index[hall_idx]
+                    hall = halls.loc[_idx]
                     cap = hall.Capacity
                     half = cap // 2
                     occupy = min(no_of_students, abs(half - hall.Seat))
@@ -218,8 +219,8 @@ def generate_hallplan(db_connector: Connection, cursor: Cursor, /, *,
                     no_of_students = len(students)
                     seat = hall.Seat + occupy
 
-                    _halls.at[hall_idx, "Capacity"] = cap - seat
-                    _halls.at[hall_idx, "Seat"] = seat
+                    halls.at[_idx, "Capacity"] = cap - seat
+                    halls.at[_idx, "Seat"] = seat
                     if seat in (half, cap):
                         hall_idx = (hall_idx + 1) % n
 

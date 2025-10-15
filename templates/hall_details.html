@@ -86,7 +86,7 @@ limitations under the License. -->
 
 {% block content %}
 <div class="details-container">
-    <form class="details-form" method="POST" action="/attendance">
+    <form class="details-form" method="POST" action={{action or "/attendance"}}>
         <h1>Hall Details</h1>
         <div class="form-group">
             <label for="school">School</label>
@@ -122,7 +122,7 @@ limitations under the License. -->
         </div> 
         {% endif %}
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="active-button" name="action" value="proceed">Proceed</button>
+            <button type="submit" class="active-button" name="action" value="proceed">{{ proceed or "Proceed" }}</button>
             {% if user == "avnadmin" %}
                 <button type="submit" class="active-button" name="action" value="view">View</button>
             {% endif %}
