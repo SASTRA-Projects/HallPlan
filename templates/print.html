@@ -15,10 +15,10 @@ limitations under the License. -->
 
 {% extends "layout.html" %}
 
-{% block title %}Printable Attendance Sheet{% endblock %}
+{% block title %}Printable hall Sheet{% endblock %}
 
 {% block head %}
-<meta name="description" content="A printable, two-column attendance sheet for classrooms.">
+<meta name="description" content="A printable, two-column hall sheet for classrooms.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
     #content { padding: 0; margin: 0; max-width: 100%; width: 100%; }
@@ -27,27 +27,25 @@ limitations under the License. -->
     [data-theme="dark"] .screen-header { border-bottom-color: var(--text-dark); }
     .screen-header h1 { margin: 0; font-size: 1.6rem; }
     .screen-header p { margin: 0.4rem 0 0; font-size: 1rem; }
-    .screen-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
     .attendance-table { width: 100%; border-collapse: collapse; }
-    .attendance-table th, .attendance-table td { border: 1px solid var(--text-light); padding: 0.25rem 0.5rem; text-align: left; font-size: 1rem; }
-    .column-one .attendance-table th, .column-one .attendance-table td { border-right-width: 0; }
+    .attendance-table th, .attendance-table td { border: 1px solid var(--text-light); padding: 0.25rem 0.5rem; text-align: left; font-size: 1rem; vertical-align: top; }
     [data-theme="dark"] .attendance-table th, [data-theme="dark"] .attendance-table td { border-color: var(--text-dark); }
-    .attendance-table th { background-color: var(--input-bg-light); font-weight: 600; text-transform: uppercase; font-size: 1rem; }
+    .attendance-table th { background-color: var(--input-bg-light); font-weight: 600; text-transform: uppercase; }
     [data-theme="dark"] .attendance-table th { background-color: var(--input-bg-dark); }
-    .attendance-table td:first-child, .attendance-table th:first-child { text-align: center; width: 10%; }
-    .empty-cell { height: 1.5em; }
+    #desktop-table th:nth-child(4), #desktop-table td:nth-child(4) { border-right-width: 0; }
+    .attendance-table td:is(:first-child, :nth-child(5)), 
+    .attendance-table th:is(:first-child, :nth-child(5)) { text-align: center; width: 5%; }
     .actions { margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; }
     .print-action-button { padding: 0.75rem 1.5rem; min-width: 150px; }
-
+    #mobile-table { display: none; }
     @media screen {
         #print-version { display: none; }
     }
     @media (max-width: 768px) {
         .screen-view { padding: 0.5rem; }
-        .screen-main { grid-template-columns: 1fr; gap: 1rem; }
-        .column-one .attendance-table th, .column-one .attendance-table td { border-right-width: 1px; }
+        #desktop-table { display: none; }
+        #mobile-table { display: table; }
         .screen-header h1 { font-size: 1.2rem; }
-        .attendance-table th, .attendance-table td { font-size: 1rem; }
         .actions { flex-direction: column; }
     }
     @media print {
@@ -56,13 +54,13 @@ limitations under the License. -->
         #print-version { display: block; }
         .print-page { page-break-after: always; display: flex; flex-direction: column; height: 100%; }
         .print-page-header { flex-shrink: 0; text-align: center; padding-bottom: 0.4rem; border-bottom: 1.5px solid #000; font-size: 14pt; margin-bottom: 0.5rem; }
-        .print-page-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; flex-grow: 1; }
         .print-table { width: 100%; border-collapse: collapse; }
-        .print-table th, .print-table td { border: 1px solid #000; padding: 0.2rem 0.4rem; font-size: 14pt; text-align: left; }
-        .column-left .print-table th, .column-left .print-table td { border-right-width: 0; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 0.2rem 0.4rem; font-size: 14pt; text-align: left; vertical-align: top; }
+        .print-table th:nth-child(4), .print-table td:nth-child(4) { border-right-width: 0; }
         .print-table th { font-weight: bold; font-size: 10pt; text-transform: uppercase; background-color: #f2f2f2; }
-        .print-table td:first-child, .print-table th:first-child { text-align: center; }
-        .print-empty-cell { height: 1.5em; }
+        .print-table td:is(:first-child, :nth-child(5)), 
+        .print-table th:is(:first-child, :nth-child(5)) { text-align: center; }
+        .print-empty-cell { min-height: 1.8em; }
         @page { size: letter landscape; margin: 1.2cm; }
     }
 </style>
@@ -70,44 +68,41 @@ limitations under the License. -->
 {% block content %}
 <div class="screen-view">
     <header class="screen-header">
-        <h1>Attendance Sheet</h1>
+        <h1>Hall Plan Sheet</h1>
         <p><strong>Room No:</strong> {{ room_no }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Date:</strong> {{ date }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Slot:</strong> {{ slot_no }}</p>
     </header>
-    <main class="screen-main">
-        {% set max_rows = [students_col1|length, students_col2|length]|max %}
-        <div class="column-one">
-            <table class="attendance-table" id="table-one">
-                <thead><tr><th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th></tr></thead>
-                <tbody>
-                    {% for i in range(max_rows) %}
-                    <tr>
-                        {% if i < students_col1|length %}
-                            <td>{{ students_col1[i].Seat }}</td><td>{{ students_col1[i].Name }}</td><td>{{ students_col1[i].RegNo }}</td><td>{{ students_col1[i].CourseCode }}</td>
-                        {% else %}
-                            <td class="empty-cell">&nbsp;</td><td></td><td></td><td></td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="column-two">
-            <table class="attendance-table" id="table-two">
-                <thead><tr><th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th></tr></thead>
-                <tbody>
-                     {% for i in range(max_rows) %}
-                    <tr>
-                        {% if i < students_col2|length %}
-                            <td>{{ students_col2[i].Seat }}</td><td>{{ students_col2[i].Name }}</td><td>{{ students_col2[i].RegNo }}</td><td>{{ students_col2[i].CourseCode }}</td>
-                        {% else %}
-                            <td class="empty-cell">&nbsp;</td><td></td><td></td><td></td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </main>
+    <table class="attendance-table" id="desktop-table">
+        <thead>
+            <tr>
+                <th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th>
+                <th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set max_rows = [students_col1|length, students_col2|length]|max %}
+            {% for i in range(max_rows) %}
+            <tr>
+                {% set s1 = students_col1[i] if i < students_col1|length else none %}
+                <td>{{ s1.Seat if s1 }}</td><td>{{ s1.Name if s1 }}</td><td>{{ s1.RegNo if s1 }}</td><td>{{ s1.CourseCode if s1 }}</td>
+                {% set s2 = students_col2[i] if i < students_col2|length else none %}
+                <td>{{ s2.Seat if s2 }}</td><td>{{ s2.Name if s2 }}</td><td>{{ s2.RegNo if s2 }}</td><td>{{ s2.CourseCode if s2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <table class="attendance-table" id="mobile-table">
+        <thead>
+            <tr><th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th></tr>
+        </thead>
+        <tbody>
+            {% for student in students_col1 %}
+            <tr><td>{{ student.Seat }}</td><td>{{ student.Name }}</td><td>{{ student.RegNo }}</td><td>{{ student.CourseCode }}</td></tr>
+            {% endfor %}
+            {% for student in students_col2 %}
+            <tr><td>{{ student.Seat }}</td><td>{{ student.Name }}</td><td>{{ student.RegNo }}</td><td>{{ student.CourseCode }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
     <div class="actions">
         <button id="downloadExcelBtn" class="active-button print-action-button">Download Excel</button>
         <button id="printBtn" class="active-button print-action-button">Print</button>
@@ -122,64 +117,51 @@ limitations under the License. -->
                 <p><strong>Room No:</strong> {{ room_no }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Date:</strong> {{ date }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Slot:</strong> {{ slot_no }}</p>
             </header>
             <main class="print-page-main">
-                <div class="column-left">
-                    <table class="print-table">
-                        <thead><tr><th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th></tr></thead>
-                        <tbody>
-                            {% set start_index = page_num * 20 %}
-                            {% for i in range(20) %}
-                                <tr>
-                                    {% set current_index = start_index + i %}
-                                    {% if current_index < students_col1|length %}
-                                        <td>{{ students_col1[current_index].Seat }}</td><td>{{ students_col1[current_index].Name }}</td><td>{{ students_col1[current_index].RegNo }}</td><td>{{ students_col1[current_index].CourseCode }}</td>
-                                    {% else %}
-                                        <td class="print-empty-cell">&nbsp;</td><td></td><td></td><td></td>
-                                    {% endif %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="column-right">
-                    <table class="print-table">
-                         <thead><tr><th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th></tr></thead>
-                        <tbody>
-                            {% set start_index = page_num * 20 %}
-                            {% for i in range(20) %}
-                                <tr>
-                                    {% set current_index = start_index + i %}
-                                    {% if current_index < students_col2|length %}
-                                        <td>{{ students_col2[current_index].Seat }}</td><td>{{ students_col2[current_index].Name }}</td><td>{{ students_col2[current_index].RegNo }}</td><td>{{ students_col2[current_index].CourseCode }}</td>
-                                    {% else %}
-                                        <td class="print-empty-cell">&nbsp;</td><td></td><td></td><td></td>
-                                    {% endif %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th>
+                            <th>S. No</th><th>Name</th><th>Register No</th><th>Course Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set start_index = page_num * 20 %}
+                        {% for i in range(20) %}
+                        <tr>
+                            {% set c1_idx = start_index + i %}
+                            {% set s1 = students_col1[c1_idx] if c1_idx < students_col1|length else none %}
+                            <td class="print-empty-cell">{{ s1.Seat if s1 else '&nbsp;'|safe }}</td>
+                            <td>{{ s1.Name if s1 }}</td>
+                            <td>{{ s1.RegNo if s1 }}</td>
+                            <td>{{ s1.CourseCode if s1 }}</td>
+                            
+                            {% set c2_idx = start_index + i %}
+                            {% set s2 = students_col2[c2_idx] if c2_idx < students_col2|length else none %}
+                            <td class="print-empty-cell">{{ s2.Seat if s2 else '&nbsp;'|safe }}</td>
+                            <td>{{ s2.Name if s2 }}</td>
+                            <td>{{ s2.RegNo if s2 }}</td>
+                            <td>{{ s2.CourseCode if s2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </main>
         </div>
     {% endfor %}
 </div>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const getTableRowsAsText = (tableId) => {
-        const table = document.getElementById(tableId);
-        if (!table) return [];
-        return Array.from(table.querySelectorAll("tbody tr")).map(row => 
-            Array.from(row.cells, cell => cell.textContent.trim())
-        ).filter(row => row.some(cell => cell !== ""));
-    };
     document.getElementById("downloadExcelBtn").addEventListener("click", () => {
         const header = ["S. No", "Name", "Register No", "Course Code"];
-        const rows1 = getTableRowsAsText("table-one");
-        const rows2 = getTableRowsAsText("table-two");
-        const excelData = [header, ...rows1, ...rows2];
+        const excelData = [header];
+        const students1 = {{ students_col1|tojson }};
+        const students2 = {{ students_col2|tojson }};
+        students1.forEach(s => excelData.push([s.Seat, s.Name, s.RegNo, s.CourseCode]));
+        students2.forEach(s => excelData.push([s.Seat, s.Name, s.RegNo, s.CourseCode]));
         const ws = XLSX.utils.aoa_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-        const filename = `attendance_{{ date.replace("/", "-") }}_room_{{ room_no }}_slot_{{ slot_no }}.xlsx`;
+        XLSX.utils.book_append_sheet(wb, ws, "hall");
+        const filename = `hallplan_{{ date.replace("/", "-") }}_room_{{ room_no }}_slot_{{ slot_no }}.xlsx`;
         XLSX.writeFile(wb, filename);
     });
     document.getElementById("printBtn").addEventListener("click", () => window.print());
