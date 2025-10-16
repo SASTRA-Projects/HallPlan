@@ -109,7 +109,6 @@ def upload_hallplan() -> Response | str:
 
 @app.route("/download", methods=["GET", "POST"])
 def download() -> str:
-    user, _ = sql.get_user(sql.cursor)
     if request.method == "GET":
         slots = fetch_data.get_slots(sql.cursor)
         slot_min = slots[0]["no"]
@@ -117,7 +116,7 @@ def download() -> str:
         schools = tuple(school["name"] for school in get_schools(sql.cursor))
         return render_template("hall_details.html", action="/download",
                                slot_min=slot_min, slot_max=slot_max,
-                               schools=schools, proceed="Download", user=user)
+                               schools=schools, proceed="Download", date=True)
 
     if not sql.cursor:
         return render_template("./failed.html",
@@ -138,6 +137,7 @@ def download() -> str:
         date = datetime.today()
     else:
         date = datetime.strptime(date, "%Y-%m-%d")
+
     students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
     cls = get_classes(sql.cursor, building_id=building_id[0], room_no=room_no)
     if not cls:
@@ -145,22 +145,14 @@ def download() -> str:
             "./failed.html",
             reason=f"Invalid Room No. {room_no} for {school}"
         )
+
     cls_id = cls[0]["id"]
-    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
     assert isinstance(students, pd.DataFrame)
+
     students = students.query(
         "Date.dt.date == @date.date() and ClassID == @cls_id "
         "and SlotNo == @slot_no"
     )
-    if not room_no:
-        year, degree, *stream, section = _section.split()
-        _year = int(year)
-        degree = degree.title()
-        section = section.upper()
-        _stream = "".join(stream) if stream else "NULL"
-        students = students.query("Year == @_year and Degree == @degree "
-                                  "and Stream == @_stream")
-
     if students.empty:
         return render_template(
             "./failed.html",
@@ -169,11 +161,13 @@ def download() -> str:
         )
 
     students_list = students.sort_values(by="Seat").to_dict('records')
-    split_index = -(-len(students_list) // 2)
+    _len = len(students_list)
+    split_index = -(-_len // 2)
+    if _len <= 20:
+        split_index = 20
 
     students_col1 = students_list[:split_index]
     students_col2 = students_list[split_index:]
-
     return render_template("print.html", date=to_fmt(date), slot_no=slot_no,
                            room_no=room_no, school=school,
                            students_col1=students_col1,
@@ -292,7 +286,6 @@ def attendance() -> Response | str:
             reason=f"Invalid Room No. {room_no} for {school}"
         )
     cls_id = cls[0]["id"]
-    students = fetch_data.get_attendance(sql.cursor, fmt="pandas")
     assert isinstance(students, pd.DataFrame)
     students = students.query(
         "Date.dt.date == @date.date() and ClassID == @cls_id "
@@ -303,9 +296,10 @@ def attendance() -> Response | str:
         year = int(year)
         degree = degree.title()
         section = section.upper()
-        stream = "".join(stream) if stream else "NULL"
+        _stream = "".join(stream) if stream else "NULL"
         students = students.query("Year == @year and Degree == @degree "
-                                  "and Stream == @stream")
+                                  "and Stream == @_stream "
+                                  "and Section == @section")
 
     if students.empty:
         return render_template(
